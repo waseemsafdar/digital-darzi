@@ -1,4 +1,5 @@
 using Application.Common;
+using Application.Interfaces;
 using Application.Interfaces.Repositories;
 using Application.Interfaces.Services;
 using Application.ViewModels.Order;
@@ -15,19 +16,22 @@ public class OrderService : IOrderService
     private readonly IMeasurementRepository _measurementRepo;
     private readonly ICurrentUserService _currentUser;
     private readonly IAttachmentService _attachmentService;
+    private readonly IUnitOfWork _uow;
 
     public OrderService(
         IOrderRepository repo,
         ICustomerRepository customerRepo,
         IMeasurementRepository measurementRepo,
         ICurrentUserService currentUser,
-        IAttachmentService attachmentService)
+        IAttachmentService attachmentService,
+        IUnitOfWork uow)
     {
         _repo = repo;
         _customerRepo = customerRepo;
         _measurementRepo = measurementRepo;
         _currentUser = currentUser;
         _attachmentService = attachmentService;
+        _uow = uow;
     }
 
     public async Task<ApiResponse<PagedResult<OrderListViewModel>>> SearchAsync(OrderSearchViewModel filter, CancellationToken ct = default)
@@ -55,141 +59,141 @@ public class OrderService : IOrderService
         var customer = await _customerRepo.GetByIdAsync(vm.CustomerId, ct);
         if (customer == null) return ApiResponse<OrderDetailViewModel>.Fail("Customer not found.");
 
-        var now = DateTime.UtcNow;
-        var order = new Order
+        await using var tx = await _uow.BeginTransactionAsync(ct);
+        try
         {
-            Id                  = Guid.NewGuid(),
-            TenantId            = _currentUser.TenantId,
-            BranchId            = _currentUser.ShopId,
-            CustomerId          = vm.CustomerId,
-            OrderNumber         = GenerateOrderNumber(),
-            DeliveryDate        = vm.DeliveryDate,
-            Notes               = vm.Notes,
-            SpecialInstructions = vm.SpecialInstructions,
-            Discount            = vm.Discount,
-            Status              = OrderStatus.Pending,
-            ActiveStatus        = ActiveStatus.Active,
-            CreatedBy           = _currentUser.UserId,
-            CreatedOn           = now,
-            UpdatedBy           = _currentUser.UserId,
-            UpdatedOn           = now
-        };
-
-        decimal subTotal = 0;
-        foreach (var itemVm in vm.Items)
-        {
-            // Build measurement snapshot
-            Dictionary<Guid, decimal> rawMeasurements = new();
-            string snapshotJson = "{}";
-
-            if (itemVm.MeasurementProfileId.HasValue)
-            {
-                var profile = await _measurementRepo.GetProfileByIdAsync(itemVm.MeasurementProfileId.Value, ct);
-                if (profile != null && !string.IsNullOrEmpty(profile.FieldValuesJson))
-                {
-                    rawMeasurements = JsonSerializer.Deserialize<Dictionary<Guid, decimal>>(profile.FieldValuesJson) ?? new();
-                }
-            }
-            else if (itemVm.InlineMeasurements != null)
-            {
-                rawMeasurements = itemVm.InlineMeasurements;
-            }
-
-            // Snapshot as fieldName→value for display
-            if (rawMeasurements.Any())
-            {
-                // We store as-is (fieldId→value) for now; display layer resolves names
-                snapshotJson = JsonSerializer.Serialize(rawMeasurements);
-            }
-
-            var item = new OrderItem
+            var now = DateTime.UtcNow;
+            var order = new Order
             {
                 Id                  = Guid.NewGuid(),
                 TenantId            = _currentUser.TenantId,
                 BranchId            = _currentUser.ShopId,
-                OrderId             = order.Id,
-                GarmentType         = itemVm.GarmentType,
-                MeasurementProfileId= itemVm.MeasurementProfileId,
-                MeasurementSnapshot = snapshotJson,
-                FabricDescription   = itemVm.FabricDescription,
-                FabricColor         = itemVm.FabricColor,
-                StyleNotes          = itemVm.StyleNotes,
-                Price               = itemVm.Price,
-                Qty                 = itemVm.Qty,
-                Status              = OrderItemStatus.Pending,
+                CustomerId          = vm.CustomerId,
+                OrderNumber         = GenerateOrderNumber(),
+                DeliveryDate        = vm.DeliveryDate,
+                Notes               = vm.Notes,
+                SpecialInstructions = vm.SpecialInstructions,
+                Discount            = vm.Discount,
+                Status              = OrderStatus.Pending,
                 ActiveStatus        = ActiveStatus.Active,
                 CreatedBy           = _currentUser.UserId,
-                CreatedOn           = now
+                CreatedOn           = now,
+                UpdatedBy           = _currentUser.UserId,
+                UpdatedOn           = now
             };
 
-            // Stage assignments
-            if (itemVm.StageAssignments != null)
+            decimal subTotal = 0;
+            foreach (var itemVm in vm.Items)
             {
-                foreach (var asgn in itemVm.StageAssignments)
+                Dictionary<Guid, decimal> rawMeasurements = new();
+                string snapshotJson = "{}";
+
+                if (itemVm.MeasurementProfileId.HasValue)
                 {
-                    item.StageAssignments.Add(new OrderItemStageAssignment
-                    {
-                        Id                 = Guid.NewGuid(),
-                        TenantId           = _currentUser.TenantId,
-                        BranchId           = _currentUser.ShopId,
-                        OrderItemId        = item.Id,
-                        Stage              = asgn.Stage,
-                        AssignedKarigarId  = asgn.AssignedKarigarId,
-                        StagePrice         = asgn.StagePrice,
-                        EstimatedDays      = asgn.EstimatedDays,
-                        CreatedBy          = _currentUser.UserId,
-                        CreatedOn          = now
-                    });
+                    var profile = await _measurementRepo.GetProfileByIdAsync(itemVm.MeasurementProfileId.Value, ct);
+                    if (profile != null && !string.IsNullOrEmpty(profile.FieldValuesJson))
+                        rawMeasurements = JsonSerializer.Deserialize<Dictionary<Guid, decimal>>(profile.FieldValuesJson) ?? new();
                 }
+                else if (itemVm.InlineMeasurements != null)
+                {
+                    rawMeasurements = itemVm.InlineMeasurements;
+                }
+
+                if (rawMeasurements.Any())
+                    snapshotJson = JsonSerializer.Serialize(rawMeasurements);
+
+                var item = new OrderItem
+                {
+                    Id                   = Guid.NewGuid(),
+                    TenantId             = _currentUser.TenantId,
+                    BranchId             = _currentUser.ShopId,
+                    OrderId              = order.Id,
+                    GarmentType          = itemVm.GarmentType,
+                    MeasurementProfileId = itemVm.MeasurementProfileId,
+                    MeasurementSnapshot  = snapshotJson,
+                    FabricDescription    = itemVm.FabricDescription,
+                    FabricColor          = itemVm.FabricColor,
+                    StyleNotes           = itemVm.StyleNotes,
+                    Price                = itemVm.Price,
+                    Qty                  = itemVm.Qty,
+                    Status               = OrderItemStatus.Pending,
+                    ActiveStatus         = ActiveStatus.Active,
+                    CreatedBy            = _currentUser.UserId,
+                    CreatedOn            = now
+                };
+
+                if (itemVm.StageAssignments != null)
+                {
+                    foreach (var asgn in itemVm.StageAssignments)
+                    {
+                        item.StageAssignments.Add(new OrderItemStageAssignment
+                        {
+                            Id                = Guid.NewGuid(),
+                            TenantId          = _currentUser.TenantId,
+                            BranchId          = _currentUser.ShopId,
+                            OrderItemId       = item.Id,
+                            Stage             = asgn.Stage,
+                            AssignedKarigarId = asgn.AssignedKarigarId,
+                            StagePrice        = asgn.StagePrice,
+                            EstimatedDays     = asgn.EstimatedDays,
+                            CreatedBy         = _currentUser.UserId,
+                            CreatedOn         = now
+                        });
+                    }
+                }
+
+                order.Items.Add(item);
+                subTotal += item.Price * item.Qty;
             }
 
-            order.Items.Add(item);
-            subTotal += item.Price * item.Qty;
-        }
+            order.SubTotal   = subTotal;
+            order.GrandTotal = subTotal - vm.Discount;
+            order.AmountPaid = vm.AdvancePayment;
+            order.BalanceDue = order.GrandTotal - vm.AdvancePayment;
 
-        order.SubTotal   = subTotal;
-        order.GrandTotal = subTotal - vm.Discount;
-        order.AmountPaid = vm.AdvancePayment;
-        order.BalanceDue = order.GrandTotal - vm.AdvancePayment;
-
-        // Record advance payment if any
-        if (vm.AdvancePayment > 0)
-        {
-            order.Payments.Add(new OrderPayment
+            if (vm.AdvancePayment > 0)
             {
-                Id            = Guid.NewGuid(),
-                TenantId      = _currentUser.TenantId,
-                BranchId      = _currentUser.ShopId,
-                OrderId       = order.Id,
-                Amount        = vm.AdvancePayment,
-                PaymentMethod = vm.PaymentMethod,
-                Note          = "Advance payment",
-                PaidAt        = now,
-                CreatedBy     = _currentUser.UserId,
-                CreatedOn     = now
-            });
-        }
-
-        await _repo.CreateAsync(order, ct);
-
-        // Handle attachment uploads if any were provided
-        if (vm.Attachments != null && vm.Attachments.Any())
-        {
-            foreach (var file in vm.Attachments)
-            {
-                await _attachmentService.AddAsync(order.Id, AttachmentType.Order, file, ct);
+                order.Payments.Add(new OrderPayment
+                {
+                    Id            = Guid.NewGuid(),
+                    TenantId      = _currentUser.TenantId,
+                    BranchId      = _currentUser.ShopId,
+                    OrderId       = order.Id,
+                    Amount        = vm.AdvancePayment,
+                    PaymentMethod = vm.PaymentMethod,
+                    Note          = "Advance payment",
+                    PaidAt        = now,
+                    CreatedBy     = _currentUser.UserId,
+                    CreatedOn     = now
+                });
             }
+
+            await _repo.AddAsync(order, ct);
+
+            // Update customer stats
+            customer.TotalOrders++;
+            customer.TotalSpend += order.GrandTotal;
+            UpdateLoyaltyTier(customer);
+            customer.UpdatedOn = now;
+            await _customerRepo.UpdateAsync(customer, ct);
+
+            await _uow.CommitAsync(ct);
+
+            // Attachments after commit (file I/O outside transaction)
+            if (vm.Attachments != null && vm.Attachments.Any())
+            {
+                foreach (var file in vm.Attachments)
+                    await _attachmentService.AddAsync(order.Id, AttachmentType.Order, file, ct);
+            }
+
+            var detail = await _repo.GetDetailAsync(order.Id, ct);
+            return ApiResponse<OrderDetailViewModel>.Ok(detail!);
         }
-
-        // Update customer stats
-        customer.TotalOrders++;
-        customer.TotalSpend += order.GrandTotal;
-        UpdateLoyaltyTier(customer);
-        customer.UpdatedOn = now;
-        await _customerRepo.UpdateAsync(customer, ct);
-
-        var detail = await _repo.GetDetailAsync(order.Id, ct);
-        return ApiResponse<OrderDetailViewModel>.Ok(detail!);
+        catch (Exception ex)
+        {
+            await _uow.RollbackAsync(ct);
+            return ApiResponse<OrderDetailViewModel>.Fail(ex.InnerException?.Message ?? ex.Message);
+        }
     }
 
     public async Task<ApiResponse<OrderDetailViewModel>> UpdateAsync(Guid id, UpdateOrderViewModel vm, CancellationToken ct = default)

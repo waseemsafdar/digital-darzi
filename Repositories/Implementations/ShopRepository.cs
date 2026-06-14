@@ -4,17 +4,14 @@ using Application.ViewModels.Shop;
 using Domain.Entities;
 using Domain.Enums;
 using Infrastructure.Data;
+using Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace Repositories.Implementations;
 
-public class ShopRepository : IShopRepository
+public class ShopRepository : BaseRepository<Shop>, IShopRepository
 {
-    private readonly ApplicationDbContext _db;
-    public ShopRepository(ApplicationDbContext db) => _db = db;
-
-    public async Task<Shop?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _db.Shops.FirstOrDefaultAsync(s => s.Id == id, ct);
+    public ShopRepository(ApplicationDbContext db) : base(db) { }
 
     public async Task<PagedResult<ShopListViewModel>> GetListAsync(int page, int pageSize, CancellationToken ct = default)
     {
@@ -40,12 +37,9 @@ public class ShopRepository : IShopRepository
 
     public async Task<ShopDetailViewModel?> GetDetailAsync(Guid id, CancellationToken ct = default)
     {
-        var s = await _db.Shops
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id, ct);
+        var s = await _db.Shops.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
         if (s == null) return null;
 
-        // Try to fetch owner name from AppUsers
         string? ownerName = null;
         if (s.OwnerId.HasValue)
         {
@@ -58,36 +52,24 @@ public class ShopRepository : IShopRepository
 
         return new ShopDetailViewModel
         {
-            Id              = s.Id,
-            Name            = s.Name,
-            Address         = s.Address,
-            City            = s.City,
-            Phone           = s.Phone,
-            WhatsAppNumber  = s.WhatsAppNumber,
-            LogoUrl         = s.LogoUrl,
-            Currency        = s.Currency,
-            CurrencySymbol  = s.CurrencySymbol,
-            OwnerId         = s.OwnerId,
-            OwnerName       = ownerName,
-            ActiveStatus    = s.ActiveStatus,
-            CreatedOn       = s.CreatedOn
+            Id             = s.Id,
+            Name           = s.Name,
+            Address        = s.Address,
+            City           = s.City,
+            Phone          = s.Phone,
+            WhatsAppNumber = s.WhatsAppNumber,
+            LogoUrl        = s.LogoUrl,
+            Currency       = s.Currency,
+            CurrencySymbol = s.CurrencySymbol,
+            OwnerId        = s.OwnerId,
+            OwnerName      = ownerName,
+            ActiveStatus   = s.ActiveStatus,
+            CreatedOn      = s.CreatedOn
         };
     }
 
-    public async Task<Shop> CreateAsync(Shop shop, CancellationToken ct = default)
-    {
-        _db.Shops.Add(shop);
-        await _db.SaveChangesAsync(ct);
-        return shop;
-    }
-
-    public async Task UpdateAsync(Shop shop, CancellationToken ct = default)
-    {
-        _db.Shops.Update(shop);
-        await _db.SaveChangesAsync(ct);
-    }
-
-    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    // Override soft delete to also set ActiveStatus
+    public override async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var shop = await GetByIdAsync(id, ct);
         if (shop == null) return;

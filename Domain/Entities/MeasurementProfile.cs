@@ -11,7 +11,7 @@ public class MeasurementProfile : BaseDBModel
     public string? ProfileName { get; set; }         // e.g. "Suit – June 2025"
     public string? FieldValuesJson { get; set; }     // JSONB: {fieldId → decimal}
     public string? Notes { get; set; }
-    public DateTime UpdatedOn { get; set; } = DateTime.UtcNow;
+    public new DateTime UpdatedOn { get; set; } = DateTime.UtcNow;
 
     // Navigation
     public Customer Customer { get; set; } = null!;

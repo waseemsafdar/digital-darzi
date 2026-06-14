@@ -84,6 +84,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IKarigarService, KarigarService>();
 builder.Services.AddScoped<IReportingService, ReportingService>();
 
+// ── Unit of Work ──────────────────────────────────────────────────────────
+builder.Services.AddScoped<Application.Interfaces.IUnitOfWork, Infrastructure.Data.UnitOfWork>();
+
 // ── Repositories ──────────────────────────────────────────────────────────
 builder.Services.AddScoped<IShopRepository, ShopRepository>();
 builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();

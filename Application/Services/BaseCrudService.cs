@@ -1,85 +1,77 @@
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Threading;
-using System.Threading.Tasks;
-using AutoMapper;
-using DigitalDarziApi.Domain.Entities;
-using DigitalDarziApi.Application.Interfaces.Repositories;
-using DigitalDarziApi.Application.Interfaces.Services;
-using DigitalDarziApi.Application.Common.Models;
-using DigitalDarziApi.Application.Common.Responses;
-using DigitalDarziApi.Application.ViewModels.Common;
+using Application.Common;
+using Application.Interfaces.Repositories;
+using Application.Interfaces.Services;
+using Domain.Entities;
 
-namespace DigitalDarziApi.Application.Services
+namespace Application.Services;
+
+/// <summary>
+/// Generic base CRUD service — domain-specific services inherit from this.
+/// Mirrors MobilePosApi.BaseCrudService pattern.
+/// </summary>
+public class BaseCrudService<TEntity, TCreate, TUpdate, TDetail>
+    : IBaseCrudService<TCreate, TUpdate, TDetail>
+    where TEntity : BaseDBModel
+    where TCreate : class
+    where TUpdate : class
+    where TDetail : class
 {
-    /// <summary>
-    /// Generic CRUD service for entities inheriting from BaseDBModel.
-    /// Mirrors MobilePosApi.BaseCrudService.
-    /// </summary>
-    public class BaseCrudService<TEntity, TCreateVm, TUpdateVm, TDetailVm>
-        : IBaseCrudService<TCreateVm, TUpdateVm, TDetailVm>
-        where TEntity : BaseDBModel
-        where TCreateVm : class, IBaseCrudViewModel, new()
-        where TUpdateVm : class, IBaseCrudViewModel, IIdentification, new()
-        where TDetailVm : class, IBaseCrudViewModel, new()
+    protected readonly IBaseRepository<TEntity> _repo;
+
+    public BaseCrudService(IBaseRepository<TEntity> repo)
     {
-        protected readonly IBaseRepository<TEntity> _repository;
-        protected readonly IMapper _mapper;
-
-        public BaseCrudService(IBaseRepository<TEntity> repository, IMapper mapper)
-        {
-            _repository = repository;
-            _mapper = mapper;
-        }
-
-        public virtual async Task<ApiResponse<TDetailVm>> GetByIdAsync(Guid id, CancellationToken ct = default)
-        {
-            var entity = await _repository.GetByIdAsync(id);
-            if (entity == null)
-                return new ApiResponse<TDetailVm>("Record not found.", (int)HttpStatusCode.NotFound);
-
-            var vm = _mapper.Map<TDetailVm>(entity);
-            return new ApiResponse<TDetailVm>(vm);
-        }
-
-        public virtual async Task<ApiResponse<PaginatedResultModel<TDetailVm>>> GetAllAsync(IBaseSearchModel search, CancellationToken ct = default)
-        {
-            var (entities, total) = await _repository.GetPagedAsync(search);
-            var items = _mapper.Map<IEnumerable<TDetailVm>>(entities);
-            var result = new PaginatedResultModel<TDetailVm>(items, search.PageNumber, search.PageSize, total);
-            return new ApiResponse<PaginatedResultModel<TDetailVm>>(result);
-        }
-
-        public virtual async Task<ApiResponse<Guid>> CreateAsync(TCreateVm vm, CancellationToken ct = default)
-        {
-            var entity = _mapper.Map<TEntity>(vm);
-            if (entity is BaseDBModel baseModel)
-            {
-                if (vm.GetType().GetProperty("ActiveStatus") == null)
-                    baseModel.ActiveStatus = Domain.Enums.ActiveStatus.Active;
-                if (vm.GetType().GetProperty("IsActive") == null)
-                    baseModel.IsActive = true;
-            }
-            var created = await _repository.AddAsync(entity);
-            return new ApiResponse<Guid>(created.Id);
-        }
-
-        public virtual async Task<ApiResponse<Guid>> UpdateAsync(TUpdateVm vm, CancellationToken ct = default)
-        {
-            var entity = await _repository.GetByIdAsync(vm.Id);
-            if (entity == null)
-                return new ApiResponse<Guid>("Record not found.", (int)HttpStatusCode.NotFound);
-
-            _mapper.Map(vm, entity);
-            await _repository.UpdateAsync(entity);
-            return new ApiResponse<Guid>(vm.Id);
-        }
-
-        public virtual async Task<ApiResponse<string>> DeleteAsync(Guid id, CancellationToken ct = default)
-        {
-            await _repository.DeleteAsync(id);
-            return new ApiResponse<string>(id.ToString(), "Deleted successfully.");
-        }
+        _repo = repo;
     }
+
+    public virtual async Task<ApiResponse<TDetail>> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var entity = await _repo.GetByIdAsync(id, ct);
+        if (entity == null)
+            return ApiResponse<TDetail>.Fail($"Record not found.");
+        return ApiResponse<TDetail>.Ok(MapToDetail(entity));
+    }
+
+    public virtual async Task<ApiResponse<PagedResult<TDetail>>> GetAllAsync(int page, int pageSize, CancellationToken ct = default)
+    {
+        var paged = await _repo.GetPagedAsync(page, pageSize, ct);
+        var mappedItems = paged.Items.Select(MapToDetail).ToList();
+        var result = PagedResult<TDetail>.From(mappedItems, paged.TotalCount, paged.Page, paged.PageSize);
+        return ApiResponse<PagedResult<TDetail>>.Ok(result);
+    }
+
+    public virtual async Task<ApiResponse<TDetail>> CreateAsync(TCreate vm, CancellationToken ct = default)
+    {
+        var entity = MapFromCreate(vm);
+        await _repo.AddAsync(entity, ct);
+        return ApiResponse<TDetail>.Ok(MapToDetail(entity), "Created successfully.");
+    }
+
+    public virtual async Task<ApiResponse<TDetail>> UpdateAsync(Guid id, TUpdate vm, CancellationToken ct = default)
+    {
+        var entity = await _repo.GetByIdAsync(id, ct);
+        if (entity == null)
+            return ApiResponse<TDetail>.Fail("Record not found.");
+        ApplyUpdate(entity, vm);
+        await _repo.UpdateAsync(entity, ct);
+        return ApiResponse<TDetail>.Ok(MapToDetail(entity), "Updated successfully.");
+    }
+
+    public virtual async Task<ApiResponse<object>> DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var entity = await _repo.GetByIdAsync(id, ct);
+        if (entity == null)
+            return ApiResponse<object>.Fail("Record not found.");
+        await _repo.DeleteAsync(id, ct);
+        return ApiResponse<object>.Ok(null, "Deleted successfully.");
+    }
+
+    // Override these in derived services to do the actual mapping
+    protected virtual TDetail MapToDetail(TEntity entity)
+        => throw new NotImplementedException($"{GetType().Name} must override MapToDetail().");
+
+    protected virtual TEntity MapFromCreate(TCreate vm)
+        => throw new NotImplementedException($"{GetType().Name} must override MapFromCreate().");
+
+    protected virtual void ApplyUpdate(TEntity entity, TUpdate vm)
+        => throw new NotImplementedException($"{GetType().Name} must override ApplyUpdate().");
 }

@@ -4,17 +4,18 @@ using Application.ViewModels.Order;
 using Domain.Entities;
 using Domain.Enums;
 using Infrastructure.Data;
+using Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace Repositories.Implementations;
 
-public class OrderRepository : IOrderRepository
+public class OrderRepository : BaseRepository<Order>, IOrderRepository
 {
-    private readonly ApplicationDbContext _db;
-    public OrderRepository(ApplicationDbContext db) => _db = db;
+    public OrderRepository(ApplicationDbContext db) : base(db) { }
 
-    public async Task<Order?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    // Override GetByIdAsync to eagerly load nav props
+    public override async Task<Order?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await _db.Orders
             .Include(o => o.Items)
                 .ThenInclude(i => i.StageAssignments)
@@ -56,8 +57,8 @@ public class OrderRepository : IOrderRepository
             BalanceDue          = o.BalanceDue,
             Status              = o.Status,
             CreatedOn           = o.CreatedOn,
-            Items = o.Items.Select(item => MapOrderItem(item)).ToList(),
-            Payments = o.Payments.Select(p => new OrderPaymentDetailViewModel
+            Items       = o.Items.Select(item => MapOrderItem(item)).ToList(),
+            Payments    = o.Payments.Select(p => new OrderPaymentDetailViewModel
             {
                 Id            = p.Id,
                 Amount        = p.Amount,
@@ -67,54 +68,13 @@ public class OrderRepository : IOrderRepository
             }).ToList(),
             Alterations = o.Alterations.Select(a => new OrderAlterationViewModel
             {
-                Id              = a.Id,
-                OrderItemId     = a.OrderItemId,
-                Description     = a.Description,
-                AdditionalCharge= a.AdditionalCharge,
-                DeliveryDate    = a.DeliveryDate,
-                CreatedOn       = a.CreatedOn
+                Id               = a.Id,
+                OrderItemId      = a.OrderItemId,
+                Description      = a.Description,
+                AdditionalCharge = a.AdditionalCharge,
+                DeliveryDate     = a.DeliveryDate,
+                CreatedOn        = a.CreatedOn
             }).ToList()
-        };
-    }
-
-    private static OrderItemDetailViewModel MapOrderItem(OrderItem item)
-    {
-        // Deserialize measurement snapshot
-        Dictionary<string, decimal> snapshot = new();
-        if (!string.IsNullOrEmpty(item.MeasurementSnapshot))
-        {
-            try { snapshot = JsonSerializer.Deserialize<Dictionary<string, decimal>>(item.MeasurementSnapshot) ?? new(); }
-            catch { /* ignore */ }
-        }
-
-        // Build stage progress from logs
-        var logsByStage = item.StageLogs
-            .GroupBy(l => l.Stage)
-            .ToDictionary(g => g.Key, g => g.OrderBy(l => l.CreatedOn).ToList());
-
-        var stages = item.StageAssignments.Select(a => new StageProgressViewModel
-        {
-            Stage        = a.Stage,
-            KarigarName  = a.AssignedKarigar?.Name,
-            Status       = logsByStage.ContainsKey(a.Stage)
-                            ? (logsByStage[a.Stage].Any(l => l.CompletedAt.HasValue) ? "Done" : "InProgress")
-                            : "Pending",
-            StartedAt    = logsByStage.ContainsKey(a.Stage) ? logsByStage[a.Stage].First().CreatedOn : null,
-            CompletedAt  = logsByStage.ContainsKey(a.Stage) ? logsByStage[a.Stage].FirstOrDefault(l => l.CompletedAt.HasValue)?.CompletedAt : null
-        }).ToList();
-
-        return new OrderItemDetailViewModel
-        {
-            Id                  = item.Id,
-            GarmentType         = item.GarmentType,
-            FabricDescription   = item.FabricDescription,
-            FabricColor         = item.FabricColor,
-            StyleNotes          = item.StyleNotes,
-            Price               = item.Price,
-            Qty                 = item.Qty,
-            Status              = item.Status,
-            MeasurementSnapshot = snapshot,
-            StageProgress       = stages
         };
     }
 
@@ -142,21 +102,7 @@ public class OrderRepository : IOrderRepository
             .OrderByDescending(o => o.CreatedOn)
             .Skip((filter.Page - 1) * filter.PageSize)
             .Take(filter.PageSize)
-            .Select(o => new OrderListViewModel
-            {
-                Id            = o.Id,
-                OrderNumber   = o.OrderNumber,
-                CustomerId    = o.CustomerId,
-                CustomerName  = o.Customer != null ? o.Customer.Name : string.Empty,
-                CustomerPhone = o.Customer != null ? o.Customer.Phone : string.Empty,
-                ItemCount     = o.Items.Count,
-                GrandTotal    = o.GrandTotal,
-                AmountPaid    = o.AmountPaid,
-                BalanceDue    = o.BalanceDue,
-                Status        = o.Status,
-                DeliveryDate  = o.DeliveryDate,
-                CreatedOn     = o.CreatedOn
-            })
+            .Select(o => MapToListVm(o))
             .ToListAsync(ct);
 
         return PagedResult<OrderListViewModel>.From(items, total, filter.Page, filter.PageSize);
@@ -167,21 +113,7 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.Customer)
             .Where(o => o.CustomerId == customerId)
             .OrderByDescending(o => o.CreatedOn)
-            .Select(o => new OrderListViewModel
-            {
-                Id            = o.Id,
-                OrderNumber   = o.OrderNumber,
-                CustomerId    = o.CustomerId,
-                CustomerName  = o.Customer != null ? o.Customer.Name : string.Empty,
-                CustomerPhone = o.Customer != null ? o.Customer.Phone : string.Empty,
-                ItemCount     = o.Items.Count,
-                GrandTotal    = o.GrandTotal,
-                AmountPaid    = o.AmountPaid,
-                BalanceDue    = o.BalanceDue,
-                Status        = o.Status,
-                DeliveryDate  = o.DeliveryDate,
-                CreatedOn     = o.CreatedOn
-            })
+            .Select(o => MapToListVm(o))
             .ToListAsync(ct);
 
     public async Task<List<OrderListViewModel>> GetDueTodayAsync(CancellationToken ct = default)
@@ -190,21 +122,7 @@ public class OrderRepository : IOrderRepository
             .Where(o => o.DeliveryDate.Date == DateTime.Today
                 && o.Status != OrderStatus.Delivered
                 && o.Status != OrderStatus.Cancelled)
-            .Select(o => new OrderListViewModel
-            {
-                Id            = o.Id,
-                OrderNumber   = o.OrderNumber,
-                CustomerId    = o.CustomerId,
-                CustomerName  = o.Customer != null ? o.Customer.Name : string.Empty,
-                CustomerPhone = o.Customer != null ? o.Customer.Phone : string.Empty,
-                ItemCount     = o.Items.Count,
-                GrandTotal    = o.GrandTotal,
-                AmountPaid    = o.AmountPaid,
-                BalanceDue    = o.BalanceDue,
-                Status        = o.Status,
-                DeliveryDate  = o.DeliveryDate,
-                CreatedOn     = o.CreatedOn
-            })
+            .Select(o => MapToListVm(o))
             .ToListAsync(ct);
 
     public async Task<List<OrderListViewModel>> GetOverdueAsync(CancellationToken ct = default)
@@ -214,35 +132,8 @@ public class OrderRepository : IOrderRepository
                 && o.Status != OrderStatus.Delivered
                 && o.Status != OrderStatus.Cancelled)
             .OrderBy(o => o.DeliveryDate)
-            .Select(o => new OrderListViewModel
-            {
-                Id            = o.Id,
-                OrderNumber   = o.OrderNumber,
-                CustomerId    = o.CustomerId,
-                CustomerName  = o.Customer != null ? o.Customer.Name : string.Empty,
-                CustomerPhone = o.Customer != null ? o.Customer.Phone : string.Empty,
-                ItemCount     = o.Items.Count,
-                GrandTotal    = o.GrandTotal,
-                AmountPaid    = o.AmountPaid,
-                BalanceDue    = o.BalanceDue,
-                Status        = o.Status,
-                DeliveryDate  = o.DeliveryDate,
-                CreatedOn     = o.CreatedOn
-            })
+            .Select(o => MapToListVm(o))
             .ToListAsync(ct);
-
-    public async Task<Order> CreateAsync(Order order, CancellationToken ct = default)
-    {
-        _db.Orders.Add(order);
-        await _db.SaveChangesAsync(ct);
-        return order;
-    }
-
-    public async Task UpdateAsync(Order order, CancellationToken ct = default)
-    {
-        _db.Orders.Update(order);
-        await _db.SaveChangesAsync(ct);
-    }
 
     public async Task UpdateStatusAsync(Guid id, OrderStatus status, CancellationToken ct = default)
     {
@@ -259,6 +150,59 @@ public class OrderRepository : IOrderRepository
             .Include(i => i.StageAssignments)
             .FirstOrDefaultAsync(i => i.Id == itemId, ct);
 
-    public async Task SaveChangesAsync(CancellationToken ct = default)
-        => await _db.SaveChangesAsync(ct);
+    // ── Private helpers ─────────────────────────────────────────────────────
+    private static OrderListViewModel MapToListVm(Order o) => new()
+    {
+        Id            = o.Id,
+        OrderNumber   = o.OrderNumber,
+        CustomerId    = o.CustomerId,
+        CustomerName  = o.Customer != null ? o.Customer.Name : string.Empty,
+        CustomerPhone = o.Customer != null ? o.Customer.Phone : string.Empty,
+        ItemCount     = o.Items.Count,
+        GrandTotal    = o.GrandTotal,
+        AmountPaid    = o.AmountPaid,
+        BalanceDue    = o.BalanceDue,
+        Status        = o.Status,
+        DeliveryDate  = o.DeliveryDate,
+        CreatedOn     = o.CreatedOn
+    };
+
+    private static OrderItemDetailViewModel MapOrderItem(OrderItem item)
+    {
+        Dictionary<string, decimal> snapshot = new();
+        if (!string.IsNullOrEmpty(item.MeasurementSnapshot))
+        {
+            try { snapshot = JsonSerializer.Deserialize<Dictionary<string, decimal>>(item.MeasurementSnapshot) ?? new(); }
+            catch { /* ignore */ }
+        }
+
+        var logsByStage = item.StageLogs
+            .GroupBy(l => l.Stage)
+            .ToDictionary(g => g.Key, g => g.OrderBy(l => l.CreatedOn).ToList());
+
+        var stages = item.StageAssignments.Select(a => new StageProgressViewModel
+        {
+            Stage       = a.Stage,
+            KarigarName = a.AssignedKarigar?.Name,
+            Status      = logsByStage.ContainsKey(a.Stage)
+                            ? (logsByStage[a.Stage].Any(l => l.CompletedAt.HasValue) ? "Done" : "InProgress")
+                            : "Pending",
+            StartedAt   = logsByStage.ContainsKey(a.Stage) ? logsByStage[a.Stage].First().CreatedOn : null,
+            CompletedAt = logsByStage.ContainsKey(a.Stage) ? logsByStage[a.Stage].FirstOrDefault(l => l.CompletedAt.HasValue)?.CompletedAt : null
+        }).ToList();
+
+        return new OrderItemDetailViewModel
+        {
+            Id                  = item.Id,
+            GarmentType         = item.GarmentType,
+            FabricDescription   = item.FabricDescription,
+            FabricColor         = item.FabricColor,
+            StyleNotes          = item.StyleNotes,
+            Price               = item.Price,
+            Qty                 = item.Qty,
+            Status              = item.Status,
+            MeasurementSnapshot = snapshot,
+            StageProgress       = stages
+        };
+    }
 }

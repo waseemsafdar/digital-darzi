@@ -4,17 +4,14 @@ using Application.ViewModels.Customer;
 using Domain.Entities;
 using Domain.Enums;
 using Infrastructure.Data;
+using Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace Repositories.Implementations;
 
-public class CustomerRepository : ICustomerRepository
+public class CustomerRepository : BaseRepository<Customer>, ICustomerRepository
 {
-    private readonly ApplicationDbContext _db;
-    public CustomerRepository(ApplicationDbContext db) => _db = db;
-
-    public async Task<Customer?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _db.Customers.FirstOrDefaultAsync(c => c.Id == id, ct);
+    public CustomerRepository(ApplicationDbContext db) : base(db) { }
 
     public async Task<PagedResult<CustomerListViewModel>> SearchAsync(CustomerSearchViewModel filter, CancellationToken ct = default)
     {
@@ -113,20 +110,8 @@ public class CustomerRepository : ICustomerRepository
         };
     }
 
-    public async Task<Customer> CreateAsync(Customer customer, CancellationToken ct = default)
-    {
-        _db.Customers.Add(customer);
-        await _db.SaveChangesAsync(ct);
-        return customer;
-    }
-
-    public async Task UpdateAsync(Customer customer, CancellationToken ct = default)
-    {
-        _db.Customers.Update(customer);
-        await _db.SaveChangesAsync(ct);
-    }
-
-    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    // Override soft delete to also mark ActiveStatus
+    public override async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var c = await GetByIdAsync(id, ct);
         if (c == null) return;
