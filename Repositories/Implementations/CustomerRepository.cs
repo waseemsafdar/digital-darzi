@@ -1,0 +1,137 @@
+using Application.Common;
+using Application.Interfaces.Repositories;
+using Application.ViewModels.Customer;
+using Domain.Entities;
+using Domain.Enums;
+using Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace Repositories.Implementations;
+
+public class CustomerRepository : ICustomerRepository
+{
+    private readonly ApplicationDbContext _db;
+    public CustomerRepository(ApplicationDbContext db) => _db = db;
+
+    public async Task<Customer?> GetByIdAsync(Guid id, CancellationToken ct = default)
+        => await _db.Customers.FirstOrDefaultAsync(c => c.Id == id, ct);
+
+    public async Task<PagedResult<CustomerListViewModel>> SearchAsync(CustomerSearchViewModel filter, CancellationToken ct = default)
+    {
+        var query = _db.Customers.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(filter.Query))
+        {
+            var q = filter.Query.ToLower();
+            query = query.Where(c => c.Name.ToLower().Contains(q) || c.Phone.Contains(q));
+        }
+        if (!string.IsNullOrWhiteSpace(filter.City))
+            query = query.Where(c => c.City == filter.City);
+        if (filter.Gender.HasValue)
+            query = query.Where(c => c.Gender == filter.Gender.Value);
+        if (filter.ActiveStatus.HasValue)
+            query = query.Where(c => c.ActiveStatus == filter.ActiveStatus.Value);
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .OrderBy(c => c.Name)
+            .Skip((filter.Page - 1) * filter.PageSize)
+            .Take(filter.PageSize)
+            .Select(c => new CustomerListViewModel
+            {
+                Id           = c.Id,
+                Name         = c.Name,
+                Phone        = c.Phone,
+                City         = c.City,
+                Gender       = c.Gender,
+                TotalOrders  = c.TotalOrders,
+                TotalSpend   = c.TotalSpend,
+                LoyaltyTier  = c.LoyaltyTier,
+                ActiveStatus = c.ActiveStatus
+            })
+            .ToListAsync(ct);
+
+        return PagedResult<CustomerListViewModel>.From(items, total, filter.Page, filter.PageSize);
+    }
+
+    public async Task<CustomerDetailViewModel?> GetDetailAsync(Guid id, CancellationToken ct = default)
+    {
+        var c = await _db.Customers.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (c == null) return null;
+
+        return new CustomerDetailViewModel
+        {
+            Id           = c.Id,
+            Name         = c.Name,
+            Phone        = c.Phone,
+            Email        = c.Email,
+            Address      = c.Address,
+            City         = c.City,
+            Gender       = c.Gender,
+            DateOfBirth  = c.DateOfBirth,
+            Notes        = c.Notes,
+            TotalOrders  = c.TotalOrders,
+            TotalSpend   = c.TotalSpend,
+            LoyaltyPoints= c.LoyaltyPoints,
+            LoyaltyTier  = c.LoyaltyTier,
+            ActiveStatus = c.ActiveStatus,
+            CreatedOn    = c.CreatedOn
+        };
+    }
+
+    public async Task<CustomerLedgerViewModel?> GetLedgerAsync(Guid id, CancellationToken ct = default)
+    {
+        var customer = await _db.Customers.AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (customer == null) return null;
+
+        var orders = await _db.Orders.AsNoTracking()
+            .Where(o => o.CustomerId == id)
+            .OrderByDescending(o => o.CreatedOn)
+            .Select(o => new CustomerLedgerOrderViewModel
+            {
+                OrderId     = o.Id,
+                OrderNumber = o.OrderNumber,
+                GrandTotal  = o.GrandTotal,
+                AmountPaid  = o.AmountPaid,
+                BalanceDue  = o.BalanceDue,
+                Status      = o.Status.ToString(),
+                DeliveryDate= o.DeliveryDate
+            })
+            .ToListAsync(ct);
+
+        return new CustomerLedgerViewModel
+        {
+            CustomerId  = customer.Id,
+            Name        = customer.Name,
+            Phone       = customer.Phone,
+            Orders      = orders,
+            TotalGrand  = orders.Sum(o => o.GrandTotal),
+            TotalPaid   = orders.Sum(o => o.AmountPaid),
+            TotalDue    = orders.Sum(o => o.BalanceDue)
+        };
+    }
+
+    public async Task<Customer> CreateAsync(Customer customer, CancellationToken ct = default)
+    {
+        _db.Customers.Add(customer);
+        await _db.SaveChangesAsync(ct);
+        return customer;
+    }
+
+    public async Task UpdateAsync(Customer customer, CancellationToken ct = default)
+    {
+        _db.Customers.Update(customer);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var c = await GetByIdAsync(id, ct);
+        if (c == null) return;
+        c.IsDeleted = true;
+        c.ActiveStatus = ActiveStatus.Inactive;
+        await _db.SaveChangesAsync(ct);
+    }
+}
