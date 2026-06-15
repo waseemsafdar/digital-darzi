@@ -75,17 +75,17 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITenantSetupService, TenantSetupService>();
-builder.Services.AddScoped<IShopService, ShopService>();
-builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped(typeof(IShopService<,,>), typeof(ShopService<,,>));
+builder.Services.AddScoped(typeof(ICustomerService<,,>), typeof(CustomerService<,,>));
 builder.Services.AddScoped<IMeasurementService, MeasurementService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IKarigarService, KarigarService>();
 builder.Services.AddScoped<IReportingService, ReportingService>();
-builder.Services.AddScoped<IShopExpenseService, ShopExpenseService>();
-builder.Services.AddScoped<IStaffSalaryService, StaffSalaryService>();
-builder.Services.AddScoped<IStaffAttendanceService, StaffAttendanceService>();
+builder.Services.AddScoped(typeof(IShopExpenseService<,,>), typeof(ShopExpenseService<,,>));
+builder.Services.AddScoped(typeof(IStaffSalaryService<,,>), typeof(StaffSalaryService<,,>));
+builder.Services.AddScoped(typeof(IStaffAttendanceService<,,>), typeof(StaffAttendanceService<,,>));
 
 // ── Unit of Work ──────────────────────────────────────────────────────────
 builder.Services.AddScoped<Application.Interfaces.IUnitOfWork, Infrastructure.Data.UnitOfWork>();

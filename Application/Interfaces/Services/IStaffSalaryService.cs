@@ -1,12 +1,11 @@
-using Application.Common;
-using Application.ViewModels.Finance;
+using Application.ViewModels.Common;
 
 namespace Application.Interfaces.Services;
 
-public interface IStaffSalaryService
-    : IBaseCrudService<RecordStaffSalaryViewModel, UpdateStaffSalaryViewModel, StaffSalaryDetailViewModel>
+public interface IStaffSalaryService<TCreate, TUpdate, TDetail>
+    : IBaseCrudService<TCreate, TUpdate, TDetail>
+    where TCreate : class, IBaseCrudViewModel, new()
+    where TUpdate : class, IBaseCrudViewModel, IIdentification, new()
+    where TDetail : class, IBaseCrudViewModel, new()
 {
-    Task<ApiResponse<PagedResult<StaffSalaryDetailViewModel>>> GetFilteredAsync(
-        int? month, int? year, Guid? staffId,
-        int page, int pageSize, CancellationToken ct = default);
 }

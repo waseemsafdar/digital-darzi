@@ -1,10 +1,11 @@
 using Application.Common;
+using Application.ViewModels.Common;
 using Domain.Enums;
 
 namespace Application.ViewModels.Finance;
 
 // ── Expense ───────────────────────────────────────────────────────────────
-public class CreateShopExpenseViewModel
+public class CreateShopExpenseViewModel : IBaseCrudViewModel
 {
     public string Category { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
@@ -14,7 +15,7 @@ public class CreateShopExpenseViewModel
     public string? ReceiptRef { get; set; }
 }
 
-public class UpdateShopExpenseViewModel : IHasId
+public class UpdateShopExpenseViewModel : IBaseCrudViewModel, IIdentification
 {
     public Guid Id { get; set; }
     public string? Category { get; set; }
@@ -23,6 +24,13 @@ public class UpdateShopExpenseViewModel : IHasId
     public DateTime? ExpenseDate { get; set; }
     public PaymentMethod? PaymentMethod { get; set; }
     public string? ReceiptRef { get; set; }
+}
+
+public class ShopExpenseSearchModel : BaseSearchModel
+{
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
+    public string? Category { get; set; }
 }
 
 public class ShopExpenseListViewModel
@@ -37,7 +45,7 @@ public class ShopExpenseListViewModel
     public string AddedByName { get; set; } = string.Empty;
 }
 
-public class ShopExpenseDetailViewModel
+public class ShopExpenseDetailViewModel : IBaseCrudViewModel
 {
     public Guid Id { get; set; }
     public Guid ShopId { get; set; }
@@ -53,7 +61,7 @@ public class ShopExpenseDetailViewModel
 }
 
 // ── Salary ─────────────────────────────────────────────────────────────────
-public class RecordStaffSalaryViewModel
+public class RecordStaffSalaryViewModel : IBaseCrudViewModel
 {
     public Guid StaffUserId { get; set; }
     public int Month { get; set; }
@@ -63,6 +71,13 @@ public class RecordStaffSalaryViewModel
     public decimal Deduction { get; set; } = 0;
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
     public string? Notes { get; set; }
+}
+
+public class StaffSalarySearchModel : BaseSearchModel
+{
+    public int? Month { get; set; }
+    public int? Year { get; set; }
+    public Guid? StaffId { get; set; }
 }
 
 public class StaffSalaryListViewModel
@@ -80,7 +95,7 @@ public class StaffSalaryListViewModel
     public DateTime PaidOn { get; set; }
 }
 
-public class UpdateStaffSalaryViewModel : IHasId
+public class UpdateStaffSalaryViewModel : IBaseCrudViewModel, IIdentification
 {
     public Guid Id { get; set; }
     public decimal? BaseSalary { get; set; }
@@ -90,7 +105,7 @@ public class UpdateStaffSalaryViewModel : IHasId
     public string? Notes { get; set; }
 }
 
-public class StaffSalaryDetailViewModel
+public class StaffSalaryDetailViewModel : IBaseCrudViewModel
 {
     public Guid Id { get; set; }
     public Guid ShopId { get; set; }
@@ -108,7 +123,7 @@ public class StaffSalaryDetailViewModel
 }
 
 // ── Attendance ─────────────────────────────────────────────────────────────
-public class RecordAttendanceViewModel
+public class RecordAttendanceViewModel : IBaseCrudViewModel
 {
     public Guid StaffUserId { get; set; }
     public DateTime Date { get; set; } = DateTime.Today;
@@ -116,6 +131,13 @@ public class RecordAttendanceViewModel
     public TimeSpan? CheckIn { get; set; }
     public TimeSpan? CheckOut { get; set; }
     public string? Notes { get; set; }
+}
+
+public class AttendanceSearchModel : BaseSearchModel
+{
+    public Guid? StaffId { get; set; }
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
 }
 
 public class AttendanceListViewModel
@@ -130,7 +152,7 @@ public class AttendanceListViewModel
     public string? Notes { get; set; }
 }
 
-public class UpdateAttendanceViewModel : IHasId
+public class UpdateAttendanceViewModel : IBaseCrudViewModel, IIdentification
 {
     public Guid Id { get; set; }
     public AttendanceStatus? Status { get; set; }
@@ -139,7 +161,7 @@ public class UpdateAttendanceViewModel : IHasId
     public string? Notes { get; set; }
 }
 
-public class AttendanceDetailViewModel
+public class AttendanceDetailViewModel : IBaseCrudViewModel
 {
     public Guid Id { get; set; }
     public Guid ShopId { get; set; }

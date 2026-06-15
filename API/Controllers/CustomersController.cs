@@ -1,5 +1,6 @@
 using Application.Interfaces.Services;
 using Application.ViewModels.Customer;
+using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,27 +9,16 @@ namespace API.Controllers;
 [Route("api/customers")]
 [Authorize]
 public class CustomersController
-    : BaseCrudController<CreateCustomerViewModel, UpdateCustomerViewModel, CustomerDetailViewModel>
+    : BaseCrudController<Customer, CreateCustomerViewModel, UpdateCustomerViewModel, CustomerDetailViewModel, CustomerListViewModel, CustomerSearchViewModel>
 {
-    private readonly ICustomerService _customerService;
+    private readonly ICustomerService<CreateCustomerViewModel, UpdateCustomerViewModel, CustomerDetailViewModel> _customerService;
 
-    public CustomersController(ICustomerService service) : base(service)
+    public CustomersController(ICustomerService<CreateCustomerViewModel, UpdateCustomerViewModel, CustomerDetailViewModel> service) : base(service)
     {
         _customerService = service;
     }
 
-    /// <summary>Paginated search — overrides base GetAll.</summary>
-    [HttpGet]
-    public override async Task<IActionResult> GetAll(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        CancellationToken ct = default)
-        => ReturnProcessedResponse(await _customerService.SearchAsync(
-            new CustomerSearchViewModel { Page = page, PageSize = pageSize }, ct));
-
-    [HttpGet("search")]
-    public async Task<IActionResult> Search([FromQuery] CustomerSearchViewModel filter, CancellationToken ct)
-        => ReturnProcessedResponse(await _customerService.SearchAsync(filter, ct));
+    // Search endpoint removed - handled by base GetAll
 
     [HttpGet("{id}/ledger")]
     public async Task<IActionResult> GetLedger(Guid id, CancellationToken ct)
@@ -39,7 +29,7 @@ public class CustomersController
     {
         var result = await _customerService.CreateAsync(vm, ct);
         return result.Success
-            ? CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result)
+            ? CreatedAtAction(nameof(GetById), new { id = result.Data }, result)
             : ReturnProcessedResponse(result);
     }
 

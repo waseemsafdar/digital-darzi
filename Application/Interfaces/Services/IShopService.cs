@@ -1,9 +1,11 @@
-using Application.Common;
-using Application.ViewModels.Shop;
+using Application.ViewModels.Common;
 
 namespace Application.Interfaces.Services;
 
-public interface IShopService : IBaseCrudService<CreateShopViewModel, UpdateShopViewModel, ShopDetailViewModel>
+public interface IShopService<TCreate, TUpdate, TDetail> : IBaseCrudService<TCreate, TUpdate, TDetail>
+    where TCreate : class, IBaseCrudViewModel, new()
+    where TUpdate : class, IBaseCrudViewModel, IIdentification, new()
+    where TDetail : class, IBaseCrudViewModel, new()
 {
-    Task<ApiResponse<PagedResult<ShopListViewModel>>> GetListAsync(int page, int pageSize, CancellationToken ct = default);
 }
+

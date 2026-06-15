@@ -1,19 +1,21 @@
 using Application.Common;
+using Application.Common.Models;
+using Application.ViewModels.Common;
 
 namespace Application.Interfaces.Services;
 
 /// <summary>
 /// Generic base CRUD service interface — domain-specific services extend this.
-/// TUpdate must implement IHasId so Id travels in the body, not the route.
+/// Matches MobilePosApi base pattern.
 /// </summary>
 public interface IBaseCrudService<TCreate, TUpdate, TDetail>
-    where TCreate : class
-    where TUpdate : class, IHasId
-    where TDetail : class
+    where TCreate : class, IBaseCrudViewModel, new()
+    where TUpdate : class, IBaseCrudViewModel, IIdentification, new()
+    where TDetail : class, IBaseCrudViewModel, new()
 {
     Task<ApiResponse<TDetail>> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<ApiResponse<PagedResult<TDetail>>> GetAllAsync(int page, int pageSize, CancellationToken ct = default);
-    Task<ApiResponse<TDetail>> CreateAsync(TCreate vm, CancellationToken ct = default);
-    Task<ApiResponse<TDetail>> UpdateAsync(TUpdate vm, CancellationToken ct = default);
-    Task<ApiResponse<object>> DeleteAsync(Guid id, CancellationToken ct = default);
+    Task<ApiResponse<PaginatedResultModel<TDetail>>> GetAllAsync(IBaseSearchModel search, CancellationToken ct = default);
+    Task<ApiResponse<Guid>> CreateAsync(TCreate model, CancellationToken ct = default);
+    Task<ApiResponse<Guid>> UpdateAsync(TUpdate model, CancellationToken ct = default);
+    Task<ApiResponse<string>> DeleteAsync(Guid id, CancellationToken ct = default);
 }

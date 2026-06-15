@@ -1,19 +1,23 @@
 using Application.Common;
 using Application.Interfaces.Services;
+using Application.ViewModels.Common;
+using Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
 /// <summary>
 /// Generic base controller — all CRUD controllers should inherit from this.
-/// Update: Id comes from the ViewModel body (IHasId), not from the route.
-/// Mirrors MobilePosApi.BaseCrudController pattern.
+/// Matches MobilePosApi.BaseCrudController pattern.
 /// </summary>
 [ApiController]
-public abstract class BaseCrudController<TCreate, TUpdate, TDetail> : BaseController
-    where TCreate : class
-    where TUpdate : class, IHasId
-    where TDetail : class
+public abstract class BaseCrudController<TEntity, TCreate, TUpdate, TDetail, TList, TSearch> : BaseController
+    where TEntity : BaseDBModel
+    where TCreate : class, IBaseCrudViewModel, new()
+    where TUpdate : class, IBaseCrudViewModel, IIdentification, new()
+    where TDetail : class, IBaseCrudViewModel, new()
+    where TList   : class, new()
+    where TSearch : class, IBaseSearchModel, new()
 {
     protected readonly IBaseCrudService<TCreate, TUpdate, TDetail> _service;
 
@@ -27,17 +31,13 @@ public abstract class BaseCrudController<TCreate, TUpdate, TDetail> : BaseContro
         => ReturnProcessedResponse(await _service.GetByIdAsync(id, ct));
 
     [HttpGet]
-    public virtual async Task<IActionResult> GetAll(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        CancellationToken ct = default)
-        => ReturnProcessedResponse(await _service.GetAllAsync(page, pageSize, ct));
+    public virtual async Task<IActionResult> GetAll([FromQuery] TSearch search, CancellationToken ct)
+        => ReturnProcessedResponse(await _service.GetAllAsync(search, ct));
 
     [HttpPost]
     public virtual async Task<IActionResult> Create([FromBody] TCreate vm, CancellationToken ct)
         => ReturnProcessedResponse(await _service.CreateAsync(vm, ct));
 
-    /// <summary>Id must be included in the request body (vm.Id). No route parameter needed.</summary>
     [HttpPut]
     public virtual async Task<IActionResult> Update([FromBody] TUpdate vm, CancellationToken ct)
         => ReturnProcessedResponse(await _service.UpdateAsync(vm, ct));

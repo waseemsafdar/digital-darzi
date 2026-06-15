@@ -12,42 +12,24 @@ public class StaffSalaryRepository : BaseRepository<StaffSalary>, IStaffSalaryRe
 {
     public StaffSalaryRepository(ApplicationDbContext db) : base(db) { }
 
-    public async Task<PagedResult<StaffSalaryDetailViewModel>> GetPagedDetailAsync(
-        int? month, int? year, Guid? staffId,
-        int page, int pageSize, CancellationToken ct = default)
+    protected override IQueryable<StaffSalary> GetBaseQuery()
     {
-        var query = _db.StaffSalaries.AsNoTracking()
+        return _dbSet.AsNoTracking()
             .Include(s => s.StaffUser)
-            .Where(s => !s.IsDeleted)
-            .AsQueryable();
+            .Where(x => !x.IsDeleted);
+    }
 
-        if (month.HasValue)   query = query.Where(s => s.Month == month.Value);
-        if (year.HasValue)    query = query.Where(s => s.Year == year.Value);
-        if (staffId.HasValue) query = query.Where(s => s.StaffUserId == staffId.Value);
+    protected override Task<IQueryable<StaffSalary>> ApplyFiltersAsync(IQueryable<StaffSalary> query, Application.ViewModels.Common.IBaseSearchModel search)
+    {
+        if (search is StaffSalarySearchModel model)
+        {
+            if (model.Month.HasValue)   query = query.Where(s => s.Month == model.Month.Value);
+            if (model.Year.HasValue)    query = query.Where(s => s.Year == model.Year.Value);
+            if (model.StaffId.HasValue) query = query.Where(s => s.StaffUserId == model.StaffId.Value);
+        }
 
-        var total = await query.CountAsync(ct);
-        var items = await query
-            .OrderByDescending(s => s.Year).ThenByDescending(s => s.Month)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(s => new StaffSalaryDetailViewModel
-            {
-                Id            = s.Id,
-                ShopId        = s.ShopId,
-                StaffUserId   = s.StaffUserId,
-                StaffName     = s.StaffUser != null ? s.StaffUser.Name : string.Empty,
-                Month         = s.Month,
-                Year          = s.Year,
-                BaseSalary    = s.BaseSalary,
-                Bonus         = s.Bonus,
-                Deduction     = s.Deduction,
-                NetSalary     = s.NetSalary,
-                PaymentMethod = s.PaymentMethod,
-                Notes         = s.Notes,
-                PaidOn        = s.PaidOn
-            })
-            .ToListAsync(ct);
+        query = query.OrderByDescending(s => s.Year).ThenByDescending(s => s.Month);
 
-        return PagedResult<StaffSalaryDetailViewModel>.From(items, total, page, pageSize);
+        return Task.FromResult(query);
     }
 }

@@ -13,42 +13,23 @@ public class CustomerRepository : BaseRepository<Customer>, ICustomerRepository
 {
     public CustomerRepository(ApplicationDbContext db) : base(db) { }
 
-    public async Task<PagedResult<CustomerListViewModel>> SearchAsync(CustomerSearchViewModel filter, CancellationToken ct = default)
+    protected override Task<IQueryable<Customer>> ApplyFiltersAsync(IQueryable<Customer> query, Application.ViewModels.Common.IBaseSearchModel search)
     {
-        var query = _db.Customers.AsNoTracking().AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(filter.Query))
+        if (search is CustomerSearchViewModel filter)
         {
-            var q = filter.Query.ToLower();
-            query = query.Where(c => c.Name.ToLower().Contains(q) || c.Phone.Contains(q));
-        }
-        if (!string.IsNullOrWhiteSpace(filter.City))
-            query = query.Where(c => c.City == filter.City);
-        if (filter.Gender.HasValue)
-            query = query.Where(c => c.Gender == filter.Gender.Value);
-        if (filter.ActiveStatus.HasValue)
-            query = query.Where(c => c.ActiveStatus == filter.ActiveStatus.Value);
-
-        var total = await query.CountAsync(ct);
-        var items = await query
-            .OrderBy(c => c.Name)
-            .Skip((filter.Page - 1) * filter.PageSize)
-            .Take(filter.PageSize)
-            .Select(c => new CustomerListViewModel
+            if (!string.IsNullOrWhiteSpace(filter.Query))
             {
-                Id           = c.Id,
-                Name         = c.Name,
-                Phone        = c.Phone,
-                City         = c.City,
-                Gender       = c.Gender,
-                TotalOrders  = c.TotalOrders,
-                TotalSpend   = c.TotalSpend,
-                LoyaltyTier  = c.LoyaltyTier,
-                ActiveStatus = c.ActiveStatus
-            })
-            .ToListAsync(ct);
-
-        return PagedResult<CustomerListViewModel>.From(items, total, filter.Page, filter.PageSize);
+                var q = filter.Query.ToLower();
+                query = query.Where(c => c.Name.ToLower().Contains(q) || c.Phone.Contains(q));
+            }
+            if (!string.IsNullOrWhiteSpace(filter.City))
+                query = query.Where(c => c.City == filter.City);
+            if (filter.Gender.HasValue)
+                query = query.Where(c => c.Gender == filter.Gender.Value);
+            if (filter.ActiveStatus.HasValue)
+                query = query.Where(c => c.ActiveStatus == filter.ActiveStatus.Value);
+        }
+        return Task.FromResult(query);
     }
 
     public async Task<CustomerDetailViewModel?> GetDetailAsync(Guid id, CancellationToken ct = default)

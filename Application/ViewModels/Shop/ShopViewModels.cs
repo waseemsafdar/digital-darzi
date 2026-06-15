@@ -1,10 +1,11 @@
 using Application.Common;
+using Application.ViewModels.Common;
 using Domain.Enums;
 
 namespace Application.ViewModels.Shop;
 
 // ── Create ─────────────────────────────────────────────────────────────────
-public class CreateShopViewModel
+public class CreateShopViewModel : IBaseCrudViewModel
 {
     public string Name { get; set; } = string.Empty;
     public string? Address { get; set; }
@@ -17,7 +18,7 @@ public class CreateShopViewModel
 }
 
 // ── Update ─────────────────────────────────────────────────────────────────
-public class UpdateShopViewModel : IHasId
+public class UpdateShopViewModel : IBaseCrudViewModel, IIdentification
 {
     public Guid Id { get; set; }
     public string? Name { get; set; }
@@ -43,7 +44,7 @@ public class ShopListViewModel
 }
 
 // ── Detail ─────────────────────────────────────────────────────────────────
-public class ShopDetailViewModel
+public class ShopDetailViewModel : IBaseCrudViewModel
 {
     public Guid Id { get; set; }
     public Guid TenantId { get; set; }

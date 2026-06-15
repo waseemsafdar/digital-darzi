@@ -1,15 +1,16 @@
+using System.Linq.Expressions;
 using Application.Common;
 using Application.Interfaces.Repositories;
+using Application.ViewModels.Common;
 using Domain.Entities;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
 
 namespace Infrastructure.Repositories;
 
 /// <summary>
 /// Generic base repository — all concrete repositories should inherit from this.
-/// Provides standard EF Core CRUD with soft-delete support.
+/// Provides standard EF Core CRUD with soft-delete support and typed filters.
 /// </summary>
 public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : BaseDBModel
 {
@@ -22,28 +23,48 @@ public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : 
         _dbSet = db.Set<TEntity>();
     }
 
-    protected virtual IQueryable<TEntity> BaseQuery()
-        => _dbSet.AsNoTracking().Where(x => !x.IsDeleted);
+    protected virtual IQueryable<TEntity> GetBaseQuery()
+    {
+        return _dbSet.AsNoTracking().Where(x => !x.IsDeleted);
+    }
+
+    protected virtual Task<IQueryable<TEntity>> ApplyFiltersAsync(IQueryable<TEntity> query, IBaseSearchModel search)
+    {
+        return Task.FromResult(query);
+    }
 
     public virtual async Task<TEntity?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _dbSet.FindAsync(new object[] { id }, ct);
+    {
+        return await GetBaseQuery().FirstOrDefaultAsync(x => x.Id == id, ct);
+    }
 
     public virtual async Task<IEnumerable<TEntity>> GetAllAsync(CancellationToken ct = default)
-        => await BaseQuery().ToListAsync(ct);
-
-    public virtual async Task<PagedResult<TEntity>> GetPagedAsync(int page, int pageSize, CancellationToken ct = default)
     {
-        var query = BaseQuery();
+        return await GetBaseQuery().ToListAsync(ct);
+    }
+
+    public virtual async Task<(IEnumerable<TEntity> Items, int TotalCount)> GetPagedAsync(IBaseSearchModel search, CancellationToken ct = default)
+    {
+        var query = GetBaseQuery();
+        query = await ApplyFiltersAsync(query, search);
+
         var total = await query.CountAsync(ct);
-        var items = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(ct);
-        return PagedResult<TEntity>.From(items, total, page, pageSize);
+
+        if (!search.DisablePagination)
+        {
+            query = query
+                .Skip((search.PageNumber - 1) * search.PageSize)
+                .Take(search.PageSize);
+        }
+
+        var items = await query.ToListAsync(ct);
+        return (items, total);
     }
 
     public virtual async Task<IEnumerable<TEntity>> FindAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default)
-        => await _dbSet.Where(predicate).ToListAsync(ct);
+    {
+        return await _dbSet.Where(predicate).ToListAsync(ct);
+    }
 
     public virtual async Task<TEntity> AddAsync(TEntity entity, CancellationToken ct = default)
     {

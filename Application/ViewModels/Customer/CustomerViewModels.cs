@@ -1,9 +1,10 @@
 using Application.Common;
+using Application.ViewModels.Common;
 using Domain.Enums;
 
 namespace Application.ViewModels.Customer;
 
-public class CreateCustomerViewModel
+public class CreateCustomerViewModel : IBaseCrudViewModel
 {
     public string Name { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
@@ -15,7 +16,7 @@ public class CreateCustomerViewModel
     public string? Notes { get; set; }
 }
 
-public class UpdateCustomerViewModel : IHasId
+public class UpdateCustomerViewModel : IBaseCrudViewModel, IIdentification
 {
     public Guid Id { get; set; }
     public string? Name { get; set; }
@@ -29,14 +30,12 @@ public class UpdateCustomerViewModel : IHasId
     public ActiveStatus? ActiveStatus { get; set; }
 }
 
-public class CustomerSearchViewModel
+public class CustomerSearchViewModel : BaseSearchModel
 {
     public string? Query { get; set; }       // name or phone search
     public string? City { get; set; }
     public Gender? Gender { get; set; }
     public ActiveStatus? ActiveStatus { get; set; }
-    public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
 }
 
 public class CustomerListViewModel
@@ -52,7 +51,7 @@ public class CustomerListViewModel
     public ActiveStatus ActiveStatus { get; set; }
 }
 
-public class CustomerDetailViewModel
+public class CustomerDetailViewModel : IBaseCrudViewModel
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;

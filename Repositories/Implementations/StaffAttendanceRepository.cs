@@ -13,40 +13,15 @@ public class StaffAttendanceRepository : BaseRepository<StaffAttendance>, IStaff
 {
     public StaffAttendanceRepository(ApplicationDbContext db) : base(db) { }
 
-    public async Task<PagedResult<AttendanceDetailViewModel>> GetPagedDetailAsync(
-        Guid? staffId, DateTime? from, DateTime? to,
-        int page, int pageSize, CancellationToken ct = default)
+    protected override Task<IQueryable<StaffAttendance>> ApplyFiltersAsync(IQueryable<StaffAttendance> query, Application.ViewModels.Common.IBaseSearchModel search)
     {
-        var query = _db.StaffAttendances.AsNoTracking()
-            .Include(a => a.StaffUser)
-            .Where(a => !a.IsDeleted)
-            .AsQueryable();
-
-        if (staffId.HasValue) query = query.Where(a => a.StaffUserId == staffId.Value);
-        if (from.HasValue)    query = query.Where(a => a.Date >= from.Value);
-        if (to.HasValue)      query = query.Where(a => a.Date <= to.Value);
-
-        var total = await query.CountAsync(ct);
-        var items = await query
-            .OrderByDescending(a => a.Date)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(a => new AttendanceDetailViewModel
-            {
-                Id          = a.Id,
-                ShopId      = a.ShopId,
-                StaffUserId = a.StaffUserId,
-                StaffName   = a.StaffUser != null ? a.StaffUser.Name : string.Empty,
-                Date        = a.Date,
-                Status      = a.Status,
-                CheckIn     = a.CheckIn,
-                CheckOut    = a.CheckOut,
-                Notes       = a.Notes,
-                CreatedOn   = a.CreatedOn
-            })
-            .ToListAsync(ct);
-
-        return PagedResult<AttendanceDetailViewModel>.From(items, total, page, pageSize);
+        if (search is AttendanceSearchModel filter)
+        {
+            if (filter.StaffId.HasValue) query = query.Where(a => a.StaffUserId == filter.StaffId.Value);
+            if (filter.From.HasValue)    query = query.Where(a => a.Date >= filter.From.Value);
+            if (filter.To.HasValue)      query = query.Where(a => a.Date <= filter.To.Value);
+        }
+        return Task.FromResult(query);
     }
 
     public async Task<AttendanceSummaryViewModel> GetSummaryAsync(

@@ -1,17 +1,22 @@
 using Application.Common;
+using Application.Interfaces;
 using Application.Interfaces.Repositories;
 using Application.Interfaces.Services;
 using Application.Services;
-using Application.ViewModels.Shop;
+using Application.ViewModels.Common;
 using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
+using System.Net;
 
 namespace Infrastructure.Services;
 
-public class ShopService :
-    BaseCrudService<Shop, CreateShopViewModel, UpdateShopViewModel, ShopDetailViewModel>,
-    IShopService
+public class ShopService<TCreate, TUpdate, TDetail> :
+    BaseCrudService<Shop, TCreate, TUpdate, TDetail>,
+    IShopService<TCreate, TUpdate, TDetail>
+    where TCreate : class, IBaseCrudViewModel, new()
+    where TUpdate : class, IBaseCrudViewModel, IIdentification, new()
+    where TDetail : class, IBaseCrudViewModel, new()
 {
     private readonly IShopRepository _shopRepo;
     private readonly ICurrentUserService _currentUser;
@@ -23,7 +28,15 @@ public class ShopService :
         _currentUser = currentUser;
     }
 
-    public override async Task<ApiResponse<ShopDetailViewModel>> CreateAsync(CreateShopViewModel vm, CancellationToken ct = default)
+    public override async Task<ApiResponse<TDetail>> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var dto = await _shopRepo.GetDetailAsync(id, ct);
+        if (dto == null) return new ApiResponse<TDetail>("Shop not found", 404);
+        
+        return new ApiResponse<TDetail>(_mapper.Map<TDetail>(dto));
+    }
+
+    public override async Task<ApiResponse<Guid>> CreateAsync(TCreate vm, CancellationToken ct = default)
     {
         var entity = _mapper.Map<Shop>(vm);
         entity.TenantId    = _currentUser.TenantId;
@@ -34,24 +47,18 @@ public class ShopService :
         entity.UpdatedBy   = _currentUser.UserId;
         entity.UpdatedOn   = DateTime.UtcNow;
         await _repo.AddAsync(entity, ct);
-        return new ApiResponse<ShopDetailViewModel>(_mapper.Map<ShopDetailViewModel>(entity), "Created successfully.");
+        return new ApiResponse<Guid>(entity.Id);
     }
 
-    public override async Task<ApiResponse<ShopDetailViewModel>> UpdateAsync(
-        UpdateShopViewModel vm, CancellationToken ct = default)
+    public override async Task<ApiResponse<Guid>> UpdateAsync(TUpdate vm, CancellationToken ct = default)
     {
         var entity = await _repo.GetByIdAsync(vm.Id, ct);
-        if (entity == null) return new ApiResponse<ShopDetailViewModel>("Shop not found.", 404);
+        if (entity == null) return new ApiResponse<Guid>("Shop not found.", 404);
         _mapper.Map(vm, entity);
         entity.UpdatedBy = _currentUser.UserId;
         entity.UpdatedOn = DateTime.UtcNow;
         await _repo.UpdateAsync(entity, ct);
-        return new ApiResponse<ShopDetailViewModel>(_mapper.Map<ShopDetailViewModel>(entity), "Updated successfully.");
-    }
-
-    public async Task<ApiResponse<PagedResult<ShopListViewModel>>> GetListAsync(int page, int pageSize, CancellationToken ct = default)
-    {
-        var result = await _shopRepo.GetListAsync(page, pageSize, ct);
-        return new ApiResponse<PagedResult<ShopListViewModel>>(result);
+        return new ApiResponse<Guid>(entity.Id);
     }
 }
+
