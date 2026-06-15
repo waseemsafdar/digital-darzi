@@ -2,87 +2,75 @@ using Application.Common;
 using Application.Interfaces;
 using Application.Interfaces.Repositories;
 using Application.Interfaces.Services;
+using Application.Services;
 using Application.ViewModels.Customer;
+using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
 
 namespace Infrastructure.Services;
 
-public class CustomerService : BaseCrudService<Customer, CreateCustomerViewModel, UpdateCustomerViewModel, CustomerDetailViewModel>, ICustomerService
+public class CustomerService
+    : BaseCrudService<Customer, CreateCustomerViewModel, UpdateCustomerViewModel, CustomerDetailViewModel>,
+      ICustomerService
 {
+    private readonly ICustomerRepository _customerRepo;
     private readonly ICurrentUserService _currentUser;
-    private readonly IUnitOfWork _uow;
 
-    public CustomerService(ICustomerRepository repo, ICurrentUserService currentUser, IUnitOfWork uow)
-        : base(repo)
+    public CustomerService(ICustomerRepository repo, ICurrentUserService currentUser, IMapper mapper)
+        : base(repo, mapper)
     {
-        _currentUser = currentUser;
-        _uow = uow;
+        _customerRepo = repo;
+        _currentUser  = currentUser;
     }
 
-    public async Task<ApiResponse<PagedResult<CustomerListViewModel>>> SearchAsync(CustomerSearchViewModel filter, CancellationToken ct = default)
-        => ApiResponse<PagedResult<CustomerListViewModel>>.Ok(await ((ICustomerRepository)_repo).SearchAsync(filter, ct));
+    public async Task<ApiResponse<PagedResult<CustomerListViewModel>>> SearchAsync(
+        CustomerSearchViewModel filter, CancellationToken ct = default)
+    {
+        var result = await _customerRepo.SearchAsync(filter, ct);
+        return new ApiResponse<PagedResult<CustomerListViewModel>>(result);
+    }
 
     public async Task<ApiResponse<CustomerLedgerViewModel>> GetLedgerAsync(Guid id, CancellationToken ct = default)
     {
-        var ledger = await ((ICustomerRepository)_repo).GetLedgerAsync(id, ct);
+        var ledger = await _customerRepo.GetLedgerAsync(id, ct);
         return ledger == null
-            ? ApiResponse<CustomerLedgerViewModel>.Fail("Customer not found.")
-            : ApiResponse<CustomerLedgerViewModel>.Ok(ledger);
+            ? new ApiResponse<CustomerLedgerViewModel>("Customer not found.", 404)
+            : new ApiResponse<CustomerLedgerViewModel>(ledger);
     }
 
-    public override async Task<ApiResponse<CustomerDetailViewModel>> CreateAsync(CreateCustomerViewModel vm, CancellationToken ct = default)
+    public override async Task<ApiResponse<CustomerDetailViewModel>> CreateAsync(
+        CreateCustomerViewModel vm, CancellationToken ct = default)
     {
-        var now = DateTime.UtcNow;
-        var customer = new Customer
-        {
-            Id = Guid.NewGuid(),
-            TenantId = _currentUser.TenantId,
-            BranchId = _currentUser.ShopId,
-            Name = vm.Name,
-            Phone = vm.Phone,
-            Email = vm.Email,
-            Address = vm.Address,
-            City = vm.City,
-            Gender = vm.Gender,
-            DateOfBirth = vm.DateOfBirth,
-            Notes = vm.Notes,
-            ActiveStatus = ActiveStatus.Active,
-            CreatedBy = _currentUser.UserId,
-            CreatedOn = now,
-            UpdatedBy = _currentUser.UserId,
-            UpdatedOn = now
-        };
-        await _repo.AddAsync(customer, ct);
-        var detail = await ((ICustomerRepository)_repo).GetDetailAsync(customer.Id, ct);
-        return ApiResponse<CustomerDetailViewModel>.Ok(detail);
+        var entity = _mapper.Map<Customer>(vm);
+        entity.TenantId    = _currentUser.TenantId;
+        entity.BranchId    = _currentUser.ShopId;
+        entity.ActiveStatus= ActiveStatus.Active;
+        entity.CreatedBy   = _currentUser.UserId;
+        entity.CreatedOn   = DateTime.UtcNow;
+        entity.UpdatedBy   = _currentUser.UserId;
+        entity.UpdatedOn   = DateTime.UtcNow;
+        await _repo.AddAsync(entity, ct);
+        return new ApiResponse<CustomerDetailViewModel>(_mapper.Map<CustomerDetailViewModel>(entity), "Created successfully.");
     }
 
-    public override async Task<ApiResponse<CustomerDetailViewModel>> UpdateAsync(Guid id, UpdateCustomerViewModel vm, CancellationToken ct = default)
+    public override async Task<ApiResponse<CustomerDetailViewModel>> UpdateAsync(
+        UpdateCustomerViewModel vm, CancellationToken ct = default)
     {
-        var customer = await _repo.GetByIdAsync(id, ct);
-        if (customer == null) return ApiResponse<CustomerDetailViewModel>.Fail("Customer not found.");
-        if (vm.Name != null) customer.Name = vm.Name;
-        if (vm.Phone != null) customer.Phone = vm.Phone;
-        if (vm.Email != null) customer.Email = vm.Email;
-        if (vm.Address != null) customer.Address = vm.Address;
-        if (vm.City != null) customer.City = vm.City;
-        if (vm.Gender.HasValue) customer.Gender = vm.Gender.Value;
-        if (vm.DateOfBirth.HasValue) customer.DateOfBirth = vm.DateOfBirth;
-        if (vm.Notes != null) customer.Notes = vm.Notes;
-        if (vm.ActiveStatus.HasValue) customer.ActiveStatus = vm.ActiveStatus.Value;
-        customer.UpdatedBy = _currentUser.UserId;
-        customer.UpdatedOn = DateTime.UtcNow;
-        await _repo.UpdateAsync(customer, ct);
-        var detail = await ((ICustomerRepository)_repo).GetDetailAsync(customer.Id, ct);
-        return ApiResponse<CustomerDetailViewModel>.Ok(detail);
+        var entity = await _repo.GetByIdAsync(vm.Id, ct);
+        if (entity == null) return new ApiResponse<CustomerDetailViewModel>("Customer not found.", 404);
+        _mapper.Map(vm, entity);
+        entity.UpdatedBy = _currentUser.UserId;
+        entity.UpdatedOn = DateTime.UtcNow;
+        await _repo.UpdateAsync(entity, ct);
+        return new ApiResponse<CustomerDetailViewModel>(_mapper.Map<CustomerDetailViewModel>(entity), "Updated successfully.");
     }
 
-    public async Task<ApiResponse<object>> DeleteAsync(Guid id, CancellationToken ct = default)
+    public override async Task<ApiResponse<object>> DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var customer = await _repo.GetByIdAsync(id, ct);
-        if (customer == null) return ApiResponse<object>.Fail("Customer not found.");
+        var entity = await _repo.GetByIdAsync(id, ct);
+        if (entity == null) return new ApiResponse<object>("Customer not found.", 404);
         await _repo.DeleteAsync(id, ct);
-        return ApiResponse<object>.Ok(null, "Customer deleted.");
+        return new ApiResponse<object>(null, "Customer deleted.");
     }
 }

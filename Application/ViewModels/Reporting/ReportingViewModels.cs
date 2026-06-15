@@ -60,6 +60,7 @@ public class DailyRevenueViewModel
     public DateTime Date { get; set; }
     public decimal Revenue { get; set; }
     public decimal Collected { get; set; }
+    public decimal UpsellAmount { get; set; }
     public int OrderCount { get; set; }
 }
 

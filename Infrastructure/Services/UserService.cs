@@ -158,9 +158,9 @@ public class UserService : IUserService
         return await GetDetailAsync(user.Id, ct);
     }
 
-    public async Task<ApiResponse<UserDetailViewModel>> UpdateAsync(Guid id, UpdateUserViewModel vm, CancellationToken ct = default)
+    public async Task<ApiResponse<UserDetailViewModel>> UpdateAsync(UpdateUserViewModel vm, CancellationToken ct = default)
     {
-        var user = await _db.AppUsers.FirstOrDefaultAsync(u => u.Id == id, ct);
+        var user = await _db.AppUsers.FirstOrDefaultAsync(u => u.Id == vm.Id, ct);
         if (user == null) return ApiResponse<UserDetailViewModel>.Fail("User not found.");
 
         if (vm.Name != null) user.Name = vm.Name;
@@ -190,7 +190,7 @@ public class UserService : IUserService
         }
 
         await _db.SaveChangesAsync(ct);
-        return await GetDetailAsync(id, ct);
+        return await GetDetailAsync(vm.Id, ct);
     }
 
     public async Task<ApiResponse<object>> DeactivateAsync(Guid id, CancellationToken ct = default)

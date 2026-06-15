@@ -8,6 +8,25 @@ public class ApiResponse<T>
     public string? Message { get; init; }
     public List<string> Errors { get; init; } = new();
 
+    /// <summary>Success constructor — mirrors MobilePosApi: new ApiResponse&lt;T&gt;(data)</summary>
+    public ApiResponse(T? data, string? message = null)
+    {
+        Success = true;
+        Data    = data;
+        Message = message;
+    }
+
+    /// <summary>Failure constructor — new ApiResponse&lt;T&gt;(errorMessage, statusCode)</summary>
+    public ApiResponse(string error, int statusCode = 400)
+    {
+        Success = false;
+        Errors  = new List<string> { error };
+        Message = error;
+    }
+
+    // Default ctor for object initializer use
+    public ApiResponse() { }
+
     public static ApiResponse<T> Ok(T? data, string? message = null)
         => new() { Success = true, Data = data, Message = message };
 

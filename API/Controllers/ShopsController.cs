@@ -5,46 +5,42 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
-[ApiController]
 [Route("api/shops")]
 [Authorize]
-public class ShopsController : ControllerBase
+public class ShopsController
+    : BaseCrudController<CreateShopViewModel, UpdateShopViewModel, ShopDetailViewModel>
 {
-    private readonly IShopService _service;
-    public ShopsController(IShopService service) => _service = service;
+    private readonly IShopService _shopService;
+
+    public ShopsController(IShopService service) : base(service)
+    {
+        _shopService = service;
+    }
 
     [HttpGet]
-    public async Task<IActionResult> GetList([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
-        => Ok(await _service.GetListAsync(page, pageSize, ct));
-
-    [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetDetail(Guid id, CancellationToken ct)
-    {
-        var result = await _service.GetDetailAsync(id, ct);
-        return result.Success ? Ok(result) : NotFound(result);
-    }
+    public override async Task<IActionResult> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+        => ReturnProcessedResponse(await _shopService.GetListAsync(page, pageSize, ct));
 
     [HttpPost]
     [Authorize(Roles = "SystemAdmin,Owner")]
-    public async Task<IActionResult> Create([FromBody] CreateShopViewModel vm, CancellationToken ct)
+    public override async Task<IActionResult> Create([FromBody] CreateShopViewModel vm, CancellationToken ct)
     {
-        var result = await _service.CreateAsync(vm, ct);
-        return result.Success ? CreatedAtAction(nameof(GetDetail), new { id = result.Data!.Id }, result) : BadRequest(result);
+        var result = await _shopService.CreateAsync(vm, ct);
+        return result.Success
+            ? CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result)
+            : ReturnProcessedResponse(result);
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPut]
     [Authorize(Roles = "SystemAdmin,Owner,Manager")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateShopViewModel vm, CancellationToken ct)
-    {
-        var result = await _service.UpdateAsync(id, vm, ct);
-        return result.Success ? Ok(result) : BadRequest(result);
-    }
+    public override async Task<IActionResult> Update([FromBody] UpdateShopViewModel vm, CancellationToken ct)
+        => ReturnProcessedResponse(await _shopService.UpdateAsync(vm, ct));
 
-    [HttpDelete("{id:guid}")]
+    [HttpDelete("{id}")]
     [Authorize(Roles = "SystemAdmin,Owner")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
-    {
-        var result = await _service.DeleteAsync(id, ct);
-        return result.Success ? Ok(result) : NotFound(result);
-    }
+    public override async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+        => ReturnProcessedResponse(await _shopService.DeleteAsync(id, ct));
 }

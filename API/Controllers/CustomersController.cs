@@ -5,51 +5,46 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
-[ApiController]
 [Route("api/customers")]
 [Authorize]
-public class CustomersController : ControllerBase
+public class CustomersController
+    : BaseCrudController<CreateCustomerViewModel, UpdateCustomerViewModel, CustomerDetailViewModel>
 {
-    private readonly ICustomerService _service;
-    public CustomersController(ICustomerService service) => _service = service;
+    private readonly ICustomerService _customerService;
 
+    public CustomersController(ICustomerService service) : base(service)
+    {
+        _customerService = service;
+    }
+
+    /// <summary>Paginated search — overrides base GetAll.</summary>
     [HttpGet]
+    public override async Task<IActionResult> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+        => ReturnProcessedResponse(await _customerService.SearchAsync(
+            new CustomerSearchViewModel { Page = page, PageSize = pageSize }, ct));
+
+    [HttpGet("search")]
     public async Task<IActionResult> Search([FromQuery] CustomerSearchViewModel filter, CancellationToken ct)
-        => Ok(await _service.SearchAsync(filter, ct));
+        => ReturnProcessedResponse(await _customerService.SearchAsync(filter, ct));
 
-    [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetDetail(Guid id, CancellationToken ct)
-    {
-        var result = await _service.GetDetailAsync(id, ct);
-        return result.Success ? Ok(result) : NotFound(result);
-    }
-
-    [HttpGet("{id:guid}/ledger")]
+    [HttpGet("{id}/ledger")]
     public async Task<IActionResult> GetLedger(Guid id, CancellationToken ct)
-    {
-        var result = await _service.GetLedgerAsync(id, ct);
-        return result.Success ? Ok(result) : NotFound(result);
-    }
+        => ReturnProcessedResponse(await _customerService.GetLedgerAsync(id, ct));
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateCustomerViewModel vm, CancellationToken ct)
+    public override async Task<IActionResult> Create([FromBody] CreateCustomerViewModel vm, CancellationToken ct)
     {
-        var result = await _service.CreateAsync(vm, ct);
-        return result.Success ? CreatedAtAction(nameof(GetDetail), new { id = result.Data!.Id }, result) : BadRequest(result);
+        var result = await _customerService.CreateAsync(vm, ct);
+        return result.Success
+            ? CreatedAtAction(nameof(GetById), new { id = result.Data!.Id }, result)
+            : ReturnProcessedResponse(result);
     }
 
-    [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCustomerViewModel vm, CancellationToken ct)
-    {
-        var result = await _service.UpdateAsync(id, vm, ct);
-        return result.Success ? Ok(result) : BadRequest(result);
-    }
-
-    [HttpDelete("{id:guid}")]
+    [HttpDelete("{id}")]
     [Authorize(Roles = "Owner,Manager")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
-    {
-        var result = await _service.DeleteAsync(id, ct);
-        return result.Success ? Ok(result) : NotFound(result);
-    }
+    public override async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+        => ReturnProcessedResponse(await _customerService.DeleteAsync(id, ct));
 }

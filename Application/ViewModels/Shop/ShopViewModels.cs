@@ -17,8 +17,9 @@ public class CreateShopViewModel
 }
 
 // ── Update ─────────────────────────────────────────────────────────────────
-public class UpdateShopViewModel
+public class UpdateShopViewModel : IHasId
 {
+    public Guid Id { get; set; }
     public string? Name { get; set; }
     public string? Address { get; set; }
     public string? City { get; set; }
@@ -45,6 +46,8 @@ public class ShopListViewModel
 public class ShopDetailViewModel
 {
     public Guid Id { get; set; }
+    public Guid TenantId { get; set; }
+    public Guid BranchId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Address { get; set; }
     public string? City { get; set; }
@@ -57,4 +60,7 @@ public class ShopDetailViewModel
     public string? OwnerName { get; set; }
     public ActiveStatus ActiveStatus { get; set; }
     public DateTime CreatedOn { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public Guid? UpdatedBy { get; set; }
+    public DateTime? UpdatedOn { get; set; }
 }

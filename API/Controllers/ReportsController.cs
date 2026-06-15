@@ -7,7 +7,7 @@ namespace API.Controllers;
 [ApiController]
 [Route("api/reports")]
 [Authorize(Roles = "SystemAdmin,Owner,Manager")]
-public class ReportsController : ControllerBase
+public class ReportsController : BaseController
 {
     private readonly IReportingService _service;
     public ReportsController(IReportingService service) => _service = service;
@@ -21,7 +21,7 @@ public class ReportsController : ControllerBase
     {
         var dateFrom = from ?? DateTime.UtcNow.AddDays(-30);
         var dateTo   = to   ?? DateTime.UtcNow;
-        return Ok(await _service.GetDashboardAsync(dateFrom, dateTo, ct));
+        return ReturnProcessedResponse(await _service.GetDashboardAsync(dateFrom, dateTo, ct));
     }
 
     /// <summary>Revenue P&L report — by garment type, payment method, daily breakdown.</summary>
@@ -33,7 +33,7 @@ public class ReportsController : ControllerBase
     {
         var dateFrom = from ?? DateTime.UtcNow.AddDays(-30);
         var dateTo   = to   ?? DateTime.UtcNow;
-        return Ok(await _service.GetRevenueReportAsync(dateFrom, dateTo, ct));
+        return ReturnProcessedResponse(await _service.GetRevenueReportAsync(dateFrom, dateTo, ct));
     }
 
     /// <summary>Daily revenue breakdown chart data.</summary>
@@ -45,7 +45,7 @@ public class ReportsController : ControllerBase
     {
         var dateFrom = from ?? DateTime.UtcNow.AddDays(-30);
         var dateTo   = to   ?? DateTime.UtcNow;
-        return Ok(await _service.GetDailyRevenueAsync(dateFrom, dateTo, ct));
+        return ReturnProcessedResponse(await _service.GetDailyRevenueAsync(dateFrom, dateTo, ct));
     }
 
     /// <summary>Top customers by spend in period.</summary>
@@ -58,7 +58,7 @@ public class ReportsController : ControllerBase
     {
         var dateFrom = from ?? DateTime.UtcNow.AddDays(-30);
         var dateTo   = to   ?? DateTime.UtcNow;
-        return Ok(await _service.GetTopCustomersAsync(dateFrom, dateTo, limit, ct));
+        return ReturnProcessedResponse(await _service.GetTopCustomersAsync(dateFrom, dateTo, limit, ct));
     }
 
     /// <summary>Staff performance — stages completed, earnings, attendance rate.</summary>
@@ -70,16 +70,16 @@ public class ReportsController : ControllerBase
     {
         var dateFrom = from ?? DateTime.UtcNow.AddDays(-30);
         var dateTo   = to   ?? DateTime.UtcNow;
-        return Ok(await _service.GetStaffPerformanceAsync(dateFrom, dateTo, ct));
+        return ReturnProcessedResponse(await _service.GetStaffPerformanceAsync(dateFrom, dateTo, ct));
     }
 
     /// <summary>Current order status counts + stage queues.</summary>
     [HttpGet("order-status")]
     public async Task<IActionResult> GetOrderStatus(CancellationToken ct)
-        => Ok(await _service.GetOrderStatusReportAsync(ct));
+        => ReturnProcessedResponse(await _service.GetOrderStatusReportAsync(ct));
 
     /// <summary>All orders with outstanding balance due.</summary>
     [HttpGet("pending-balances")]
     public async Task<IActionResult> GetPendingBalances(CancellationToken ct)
-        => Ok(await _service.GetPendingBalancesAsync(ct));
+        => ReturnProcessedResponse(await _service.GetPendingBalancesAsync(ct));
 }

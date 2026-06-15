@@ -1,3 +1,4 @@
+using Application.Common;
 using Domain.Enums;
 using Microsoft.AspNetCore.Http;
 
@@ -40,8 +41,9 @@ public class CreateOrderItemStageAssignmentViewModel
 }
 
 // ── Update Order ─────────────────────────────────────────────────────────────
-public class UpdateOrderViewModel
+public class UpdateOrderViewModel : IHasId
 {
+    public Guid Id { get; set; }
     public DateTime? DeliveryDate { get; set; }
     public string? Notes { get; set; }
     public string? SpecialInstructions { get; set; }

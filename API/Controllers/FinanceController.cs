@@ -8,7 +8,7 @@ namespace API.Controllers;
 [ApiController]
 [Route("api/finance")]
 [Authorize(Roles = "Owner,Manager")]
-public class FinanceController : ControllerBase
+public class FinanceController : BaseController
 {
     private readonly IFinanceService _service;
     public FinanceController(IFinanceService service) => _service = service;
@@ -22,7 +22,7 @@ public class FinanceController : ControllerBase
     {
         var dateFrom = from ?? DateTime.UtcNow.AddDays(-30);
         var dateTo   = to   ?? DateTime.UtcNow;
-        return Ok(await _service.GetSummaryAsync(dateFrom, dateTo, ct));
+        return ReturnProcessedResponse(await _service.GetSummaryAsync(dateFrom, dateTo, ct));
     }
 
     // ── Expenses ──────────────────────────────────────────────────────────
@@ -34,29 +34,20 @@ public class FinanceController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
-        => Ok(await _service.GetExpensesAsync(from, to, category, page, pageSize, ct));
+        => ReturnProcessedResponse(await _service.GetExpensesAsync(from, to, category, page, pageSize, ct));
 
     [HttpPost("expenses")]
     public async Task<IActionResult> CreateExpense([FromBody] CreateShopExpenseViewModel vm, CancellationToken ct)
-    {
-        var result = await _service.CreateExpenseAsync(vm, ct);
-        return result.Success ? Ok(result) : BadRequest(result);
-    }
+        => ReturnProcessedResponse(await _service.CreateExpenseAsync(vm, ct));
 
-    [HttpPut("expenses/{id:guid}")]
+    [HttpPut("expenses/{id}")]
     public async Task<IActionResult> UpdateExpense(Guid id, [FromBody] UpdateShopExpenseViewModel vm, CancellationToken ct)
-    {
-        var result = await _service.UpdateExpenseAsync(id, vm, ct);
-        return result.Success ? Ok(result) : BadRequest(result);
-    }
+        => ReturnProcessedResponse(await _service.UpdateExpenseAsync(id, vm, ct));
 
-    [HttpDelete("expenses/{id:guid}")]
+    [HttpDelete("expenses/{id}")]
     [Authorize(Roles = "Owner")]
     public async Task<IActionResult> DeleteExpense(Guid id, CancellationToken ct)
-    {
-        var result = await _service.DeleteExpenseAsync(id, ct);
-        return result.Success ? Ok(result) : NotFound(result);
-    }
+        => ReturnProcessedResponse(await _service.DeleteExpenseAsync(id, ct));
 
     // ── Salaries ─────────────────────────────────────────────────────────
     [HttpGet("salaries")]
@@ -67,14 +58,11 @@ public class FinanceController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
-        => Ok(await _service.GetSalariesAsync(month, year, staffId, page, pageSize, ct));
+        => ReturnProcessedResponse(await _service.GetSalariesAsync(month, year, staffId, page, pageSize, ct));
 
     [HttpPost("salaries")]
     public async Task<IActionResult> RecordSalary([FromBody] RecordStaffSalaryViewModel vm, CancellationToken ct)
-    {
-        var result = await _service.RecordSalaryAsync(vm, ct);
-        return result.Success ? Ok(result) : BadRequest(result);
-    }
+        => ReturnProcessedResponse(await _service.RecordSalaryAsync(vm, ct));
 
     // ── Attendance ────────────────────────────────────────────────────────
     [HttpGet("attendance")]
@@ -85,15 +73,12 @@ public class FinanceController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
         CancellationToken ct = default)
-        => Ok(await _service.GetAttendanceAsync(staffId, from, to, page, pageSize, ct));
+        => ReturnProcessedResponse(await _service.GetAttendanceAsync(staffId, from, to, page, pageSize, ct));
 
     [HttpPost("attendance")]
     [Authorize]   // all authenticated users can record attendance
     public async Task<IActionResult> RecordAttendance([FromBody] RecordAttendanceViewModel vm, CancellationToken ct)
-    {
-        var result = await _service.RecordAttendanceAsync(vm, ct);
-        return result.Success ? Ok(result) : BadRequest(result);
-    }
+        => ReturnProcessedResponse(await _service.RecordAttendanceAsync(vm, ct));
 
     [HttpGet("attendance/summary")]
     public async Task<IActionResult> AttendanceSummary(
@@ -101,5 +86,5 @@ public class FinanceController : ControllerBase
         [FromQuery] int month,
         [FromQuery] int year,
         CancellationToken ct)
-        => Ok(await _service.GetAttendanceSummaryAsync(staffId, month, year, ct));
+        => ReturnProcessedResponse(await _service.GetAttendanceSummaryAsync(staffId, month, year, ct));
 }

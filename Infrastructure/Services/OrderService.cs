@@ -196,9 +196,9 @@ public class OrderService : IOrderService
         }
     }
 
-    public async Task<ApiResponse<OrderDetailViewModel>> UpdateAsync(Guid id, UpdateOrderViewModel vm, CancellationToken ct = default)
+    public async Task<ApiResponse<OrderDetailViewModel>> UpdateAsync(UpdateOrderViewModel vm, CancellationToken ct = default)
     {
-        var order = await _repo.GetByIdAsync(id, ct);
+        var order = await _repo.GetByIdAsync(vm.Id, ct);
         if (order == null) return ApiResponse<OrderDetailViewModel>.Fail("Order not found.");
         if (order.Status == OrderStatus.Delivered || order.Status == OrderStatus.Cancelled)
             return ApiResponse<OrderDetailViewModel>.Fail("Cannot edit a delivered or cancelled order.");

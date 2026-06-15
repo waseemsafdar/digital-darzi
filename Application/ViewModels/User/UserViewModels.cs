@@ -1,3 +1,4 @@
+using Application.Common;
 using Domain.Enums;
 
 namespace Application.ViewModels.User;
@@ -39,8 +40,9 @@ public class CreateUserViewModel
     public List<Guid> ShopIds { get; set; } = new();
 }
 
-public class UpdateUserViewModel
+public class UpdateUserViewModel : IHasId
 {
+    public Guid Id { get; set; }
     public string? Name { get; set; }
     public string? Phone { get; set; }
     public List<Guid>? RoleIds { get; set; }

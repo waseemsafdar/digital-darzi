@@ -1,6 +1,7 @@
 using Application.Common;
 using Application.Interfaces.Services;
 using Application.ViewModels.Reporting;
+using Domain.Entities;
 using Domain.Enums;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -304,11 +305,16 @@ public class ReportingService : IReportingService
 
     public async Task<ApiResponse<List<DailyRevenueViewModel>>> GetDailyRevenueAsync(DateTime from, DateTime to, CancellationToken ct = default)
     {
-        var payments = await _db.OrderPayments.AsNoTracking()
+        // Pull payments flat first — grouping by .Date is not reliably translatable in EF Core
+        var paymentsRaw = await _db.OrderPayments.AsNoTracking()
             .Where(p => p.PaidAt >= from && p.PaidAt <= to)
+            .Select(p => new { p.PaidAt, p.Amount })
+            .ToListAsync(ct);
+
+        var payments = paymentsRaw
             .GroupBy(p => p.PaidAt.Date)
             .Select(g => new { Date = g.Key, Collected = g.Sum(p => p.Amount), Count = g.Count() })
-            .ToListAsync(ct);
+            .ToList();
 
         var orderRevenue = await _db.Orders.AsNoTracking()
             .Where(o => o.CreatedOn >= from && o.CreatedOn <= to && o.Status != OrderStatus.Cancelled)
@@ -316,9 +322,20 @@ public class ReportingService : IReportingService
             .Select(g => new { Date = g.Key, Revenue = g.Sum(o => o.GrandTotal), Orders = g.Count() })
             .ToListAsync(ct);
 
+        // Upsell = alteration additional charges per day (by alteration CreatedOn date)
+        var alterationsRaw = await _db.Set<OrderAlteration>().AsNoTracking()
+            .Where(a => a.CreatedOn >= from && a.CreatedOn <= to)
+            .Select(a => new { a.CreatedOn, a.AdditionalCharge })
+            .ToListAsync(ct);
+
+        var upsellMap = alterationsRaw
+            .GroupBy(a => a.CreatedOn.Date)
+            .ToDictionary(g => g.Key, g => g.Sum(a => a.AdditionalCharge));
+
         // Merge by date
         var allDates = payments.Select(p => p.Date)
             .Union(orderRevenue.Select(r => r.Date))
+            .Union(upsellMap.Keys)
             .OrderBy(d => d)
             .ToList();
 
@@ -327,10 +344,11 @@ public class ReportingService : IReportingService
 
         var result = allDates.Select(date => new DailyRevenueViewModel
         {
-            Date       = date,
-            Revenue    = revenueMap.TryGetValue(date, out var r) ? r.Revenue : 0,
-            Collected  = collectedMap.TryGetValue(date, out var p) ? p.Collected : 0,
-            OrderCount = revenueMap.TryGetValue(date, out var ro) ? ro.Orders : 0
+            Date         = date,
+            Revenue      = revenueMap.TryGetValue(date, out var r)  ? r.Revenue     : 0,
+            Collected    = collectedMap.TryGetValue(date, out var p) ? p.Collected   : 0,
+            UpsellAmount = upsellMap.TryGetValue(date, out var u)    ? u             : 0,
+            OrderCount   = revenueMap.TryGetValue(date, out var ro)  ? ro.Orders     : 0
         }).ToList();
 
         return ApiResponse<List<DailyRevenueViewModel>>.Ok(result);

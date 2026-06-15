@@ -1,10 +1,11 @@
 using Application.Common;
 using Application.Interfaces.Repositories;
 using Application.Interfaces.Services;
+using Application.Services;
 using Application.ViewModels.Shop;
+using AutoMapper;
 using Domain.Entities;
 using Domain.Enums;
-using Application.Interfaces;
 
 namespace Infrastructure.Services;
 
@@ -12,78 +13,45 @@ public class ShopService :
     BaseCrudService<Shop, CreateShopViewModel, UpdateShopViewModel, ShopDetailViewModel>,
     IShopService
 {
+    private readonly IShopRepository _shopRepo;
     private readonly ICurrentUserService _currentUser;
-    private readonly IUnitOfWork _uow;
 
-    public ShopService(IShopRepository repo, ICurrentUserService currentUser, IUnitOfWork uow)
-        : base(repo)
+    public ShopService(IShopRepository repo, ICurrentUserService currentUser, IMapper mapper)
+        : base(repo, mapper)
     {
+        _shopRepo    = repo;
         _currentUser = currentUser;
-        _uow = uow;
+    }
+
+    public override async Task<ApiResponse<ShopDetailViewModel>> CreateAsync(CreateShopViewModel vm, CancellationToken ct = default)
+    {
+        var entity = _mapper.Map<Shop>(vm);
+        entity.TenantId    = _currentUser.TenantId;
+        entity.BranchId    = _currentUser.ShopId;
+        entity.ActiveStatus= ActiveStatus.Active;
+        entity.CreatedBy   = _currentUser.UserId;
+        entity.CreatedOn   = DateTime.UtcNow;
+        entity.UpdatedBy   = _currentUser.UserId;
+        entity.UpdatedOn   = DateTime.UtcNow;
+        await _repo.AddAsync(entity, ct);
+        return new ApiResponse<ShopDetailViewModel>(_mapper.Map<ShopDetailViewModel>(entity), "Created successfully.");
+    }
+
+    public override async Task<ApiResponse<ShopDetailViewModel>> UpdateAsync(
+        UpdateShopViewModel vm, CancellationToken ct = default)
+    {
+        var entity = await _repo.GetByIdAsync(vm.Id, ct);
+        if (entity == null) return new ApiResponse<ShopDetailViewModel>("Shop not found.", 404);
+        _mapper.Map(vm, entity);
+        entity.UpdatedBy = _currentUser.UserId;
+        entity.UpdatedOn = DateTime.UtcNow;
+        await _repo.UpdateAsync(entity, ct);
+        return new ApiResponse<ShopDetailViewModel>(_mapper.Map<ShopDetailViewModel>(entity), "Updated successfully.");
     }
 
     public async Task<ApiResponse<PagedResult<ShopListViewModel>>> GetListAsync(int page, int pageSize, CancellationToken ct = default)
     {
-        var result = await ((IShopRepository)_repo).GetListAsync(page, pageSize, ct);
-        return ApiResponse<PagedResult<ShopListViewModel>>.Ok(result);
-    }
-
-    protected override ShopDetailViewModel MapToDetail(Shop entity) => new()
-    {
-        Id = entity.Id,
-        TenantId = entity.TenantId,
-        BranchId = entity.BranchId,
-        Name = entity.Name,
-        Address = entity.Address,
-        City = entity.City,
-        Phone = entity.Phone,
-        WhatsAppNumber = entity.WhatsAppNumber,
-        LogoUrl = entity.LogoUrl,
-        Currency = entity.Currency,
-        CurrencySymbol = entity.CurrencySymbol,
-        ActiveStatus = entity.ActiveStatus,
-        CreatedBy = entity.CreatedBy,
-        CreatedOn = entity.CreatedOn,
-        UpdatedBy = entity.UpdatedBy,
-        UpdatedOn = entity.UpdatedOn
-    };
-
-    protected override Shop MapFromCreate(CreateShopViewModel vm)
-    {
-        var now = DateTime.UtcNow;
-        return new Shop
-        {
-            Id = Guid.NewGuid(),
-            TenantId = _currentUser.TenantId,
-            BranchId = _currentUser.ShopId,
-            Name = vm.Name,
-            Address = vm.Address,
-            City = vm.City,
-            Phone = vm.Phone,
-            WhatsAppNumber = vm.WhatsAppNumber,
-            LogoUrl = vm.LogoUrl,
-            Currency = vm.Currency,
-            CurrencySymbol = vm.CurrencySymbol,
-            ActiveStatus = ActiveStatus.Active,
-            CreatedBy = _currentUser.UserId,
-            CreatedOn = now,
-            UpdatedBy = _currentUser.UserId,
-            UpdatedOn = now
-        };
-    }
-
-    protected override void ApplyUpdate(Shop entity, UpdateShopViewModel vm)
-    {
-        if (vm.Name != null) entity.Name = vm.Name;
-        if (vm.Address != null) entity.Address = vm.Address;
-        if (vm.City != null) entity.City = vm.City;
-        if (vm.Phone != null) entity.Phone = vm.Phone;
-        if (vm.WhatsAppNumber != null) entity.WhatsAppNumber = vm.WhatsAppNumber;
-        if (vm.LogoUrl != null) entity.LogoUrl = vm.LogoUrl;
-        if (vm.Currency != null) entity.Currency = vm.Currency;
-        if (vm.CurrencySymbol != null) entity.CurrencySymbol = vm.CurrencySymbol;
-        if (vm.ActiveStatus.HasValue) entity.ActiveStatus = vm.ActiveStatus.Value;
-        entity.UpdatedBy = _currentUser.UserId;
-        entity.UpdatedOn = DateTime.UtcNow;
+        var result = await _shopRepo.GetListAsync(page, pageSize, ct);
+        return new ApiResponse<PagedResult<ShopListViewModel>>(result);
     }
 }

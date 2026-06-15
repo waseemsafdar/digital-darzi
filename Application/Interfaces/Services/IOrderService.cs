@@ -11,7 +11,7 @@ public interface IOrderService
     Task<ApiResponse<List<OrderListViewModel>>> GetDueTodayAsync(CancellationToken ct = default);
     Task<ApiResponse<List<OrderListViewModel>>> GetOverdueAsync(CancellationToken ct = default);
     Task<ApiResponse<OrderDetailViewModel>> CreateAsync(CreateOrderViewModel vm, CancellationToken ct = default);
-    Task<ApiResponse<OrderDetailViewModel>> UpdateAsync(Guid id, UpdateOrderViewModel vm, CancellationToken ct = default);
+    Task<ApiResponse<OrderDetailViewModel>> UpdateAsync(UpdateOrderViewModel vm, CancellationToken ct = default);
     Task<ApiResponse<object>> UpdateStatusAsync(Guid id, Domain.Enums.OrderStatus status, CancellationToken ct = default);
     Task<ApiResponse<object>> RecordPaymentAsync(Guid orderId, RecordOrderPaymentViewModel vm, CancellationToken ct = default);
     Task<ApiResponse<object>> AddAlterationAsync(CreateOrderAlterationViewModel vm, CancellationToken ct = default);

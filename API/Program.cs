@@ -83,6 +83,9 @@ builder.Services.AddScoped<IFinanceService, FinanceService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IKarigarService, KarigarService>();
 builder.Services.AddScoped<IReportingService, ReportingService>();
+builder.Services.AddScoped<IShopExpenseService, ShopExpenseService>();
+builder.Services.AddScoped<IStaffSalaryService, StaffSalaryService>();
+builder.Services.AddScoped<IStaffAttendanceService, StaffAttendanceService>();
 
 // ── Unit of Work ──────────────────────────────────────────────────────────
 builder.Services.AddScoped<Application.Interfaces.IUnitOfWork, Infrastructure.Data.UnitOfWork>();
@@ -93,6 +96,9 @@ builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 builder.Services.AddScoped<IMeasurementRepository, MeasurementRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IFinanceRepository, FinanceRepository>();
+builder.Services.AddScoped<IShopExpenseRepository, ShopExpenseRepository>();
+builder.Services.AddScoped<IStaffSalaryRepository, StaffSalaryRepository>();
+builder.Services.AddScoped<IStaffAttendanceRepository, StaffAttendanceRepository>();
 
 // ── AutoMapper ────────────────────────────────────────────────────────────
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
