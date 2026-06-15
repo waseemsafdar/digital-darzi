@@ -149,8 +149,10 @@ using (var scope = app.Services.CreateScope())
     var db = new ApplicationDbContext(optBuilder.Options, Guid.Empty);
 
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var tenantSetup = scope.ServiceProvider.GetRequiredService<ITenantSetupService>();
     await db.Database.MigrateAsync();
-    await DbInitializer.SeedAsync(roleManager, db);
+    await DbInitializer.SeedAsync(roleManager, userManager, db, tenantSetup);
 }
 
 // ── Middleware pipeline ───────────────────────────────────────────────────

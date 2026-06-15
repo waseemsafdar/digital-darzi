@@ -1,6 +1,8 @@
+using Application.Interfaces.Services;
 using Domain.Entities;
 using Domain.Enums;
 using Infrastructure.Data;
+using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,7 +21,9 @@ public static class DbInitializer
 
     public static async Task SeedAsync(
         RoleManager<IdentityRole<Guid>> roleManager,
+        UserManager<ApplicationUser> userManager,
         ApplicationDbContext db,
+        ITenantSetupService tenantSetup,
         CancellationToken ct = default)
     {
         // 1. Seed roles (idempotent)
@@ -37,6 +41,68 @@ public static class DbInitializer
         if (!systemFieldExists)
         {
             await SeedSystemMeasurementFieldsAsync(db, ct);
+        }
+
+        // 3. Seed initial admin user if no users exist
+        if (!await userManager.Users.AnyAsync(ct))
+        {
+            var adminEmail = "admin@digitaldarzi.com";
+            var adminUser = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = adminEmail,
+                Email = adminEmail,
+                EmailConfirmed = true
+            };
+            
+            var result = await userManager.CreateAsync(adminUser, "Admin123!");
+            if (result.Succeeded)
+            {
+                await userManager.AddToRoleAsync(adminUser, "SystemAdmin");
+                
+                var systemTenantId = Guid.NewGuid();
+                var systemShopId = Guid.NewGuid();
+                
+                var domainUser = new User
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = systemTenantId,
+                    BranchId = systemShopId,
+                    Name = "System Admin",
+                    Email = adminEmail,
+                    AuthId = adminUser.Id,
+                    ShopIds = new List<Guid> { systemShopId },
+                    ActiveStatus = ActiveStatus.Active,
+                    CreatedOn = DateTime.UtcNow,
+                    UpdatedOn = DateTime.UtcNow
+                };
+                
+                var sysRole = await roleManager.FindByNameAsync("SystemAdmin");
+                if (sysRole != null)
+                {
+                    domainUser.RoleIds = new List<Guid> { sysRole.Id };
+                }
+                
+                db.AppUsers.Add(domainUser);
+                
+                var shop = new Shop
+                {
+                    Id = systemShopId,
+                    TenantId = systemTenantId,
+                    BranchId = systemShopId,
+                    Name = "Digital Darzi HQ",
+                    ActiveStatus = ActiveStatus.Active,
+                    CreatedBy = domainUser.Id,
+                    UpdatedBy = domainUser.Id,
+                    CreatedOn = DateTime.UtcNow,
+                    UpdatedOn = DateTime.UtcNow
+                };
+                
+                db.Shops.Add(shop);
+                await db.SaveChangesAsync(ct);
+                
+                await tenantSetup.SetupNewTenantAsync(systemTenantId, systemShopId, domainUser.Id, ct);
+            }
         }
     }
 
