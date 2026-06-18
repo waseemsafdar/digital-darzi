@@ -83,6 +83,7 @@ builder.Services.AddScoped<IFinanceService, FinanceService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IKarigarService, KarigarService>();
 builder.Services.AddScoped<IReportingService, ReportingService>();
+builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddScoped(typeof(IShopExpenseService<,,>), typeof(ShopExpenseService<,,>));
 builder.Services.AddScoped(typeof(IStaffSalaryService<,,>), typeof(StaffSalaryService<,,>));
 builder.Services.AddScoped(typeof(IStaffAttendanceService<,,>), typeof(StaffAttendanceService<,,>));
@@ -158,16 +159,14 @@ using (var scope = app.Services.CreateScope())
 // ── Middleware pipeline ───────────────────────────────────────────────────
 app.UseGlobalExceptionHandler();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Digital Darzi API v1"));
-}
+app.UseSwagger();
+app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Digital Darzi API v1"));
 
 app.UseCors();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseSubscriptionCheck();
 app.MapControllers();
 
 app.Run();

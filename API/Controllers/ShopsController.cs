@@ -38,4 +38,12 @@ public class ShopsController
     [Authorize(Roles = "SystemAdmin,Owner")]
     public override async Task<IActionResult> Delete(Guid id, CancellationToken ct)
         => ReturnProcessedResponse(await _shopService.DeleteAsync(id, ct));
+
+    [HttpPut("{id}/subscription")]
+    [Authorize(Roles = "SystemAdmin")]
+    public async Task<IActionResult> UpdateSubscription(Guid id, [FromBody] UpdateShopSubscriptionRequest request, CancellationToken ct)
+    {
+        var result = await _shopService.UpdateSubscriptionAsync(id, request, ct);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
 }

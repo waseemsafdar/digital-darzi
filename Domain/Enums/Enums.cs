@@ -152,3 +152,11 @@ public enum AttendanceStatus
     Leave    = 4,
     Holiday  = 5
 }
+
+public enum SubscriptionStatus
+{
+    Trial = 1,
+    Active = 2,
+    Suspended = 3,
+    Cancelled = 4
+}

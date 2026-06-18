@@ -60,5 +60,20 @@ public class ShopService<TCreate, TUpdate, TDetail> :
         await _repo.UpdateAsync(entity, ct);
         return new ApiResponse<Guid>(entity.Id);
     }
+
+    public async Task<ApiResponse<bool>> UpdateSubscriptionAsync(Guid id, Application.ViewModels.Shop.UpdateShopSubscriptionRequest request, CancellationToken ct)
+    {
+        var entity = await _repo.GetByIdAsync(id, ct);
+        if (entity == null) return new ApiResponse<bool>("Shop not found.", 404);
+
+        entity.Status = request.Status;
+        entity.SubscriptionEndsAt = request.SubscriptionEndsAt;
+        entity.SubscriptionPlanName = request.SubscriptionPlanName;
+        entity.UpdatedBy = _currentUser.UserId;
+        entity.UpdatedOn = DateTime.UtcNow;
+
+        await _repo.UpdateAsync(entity, ct);
+        return new ApiResponse<bool>(true, "Subscription updated successfully.");
+    }
 }
 

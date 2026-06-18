@@ -60,8 +60,23 @@ public class ShopDetailViewModel : IBaseCrudViewModel
     public Guid? OwnerId { get; set; }
     public string? OwnerName { get; set; }
     public ActiveStatus ActiveStatus { get; set; }
+    
+    // Subscription Data
+    public SubscriptionStatus? Status { get; set; }
+    public DateTime? TrialEndsAt { get; set; }
+    public DateTime? SubscriptionEndsAt { get; set; }
+    public string? SubscriptionPlanName { get; set; }
+
     public DateTime CreatedOn { get; set; }
     public Guid? CreatedBy { get; set; }
     public Guid? UpdatedBy { get; set; }
     public DateTime? UpdatedOn { get; set; }
+}
+
+// ── Admin Subscription Update ──────────────────────────────────────────────
+public class UpdateShopSubscriptionRequest
+{
+    public SubscriptionStatus Status { get; set; }
+    public DateTime? SubscriptionEndsAt { get; set; }
+    public string? SubscriptionPlanName { get; set; }
 }

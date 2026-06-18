@@ -1,3 +1,5 @@
+using Domain.Enums;
+
 namespace Domain.Entities;
 
 public class Shop : BaseDBModel
@@ -11,6 +13,14 @@ public class Shop : BaseDBModel
     public string? LogoUrl { get; set; }
     public string Currency { get; set; } = "PKR";
     public string CurrencySymbol { get; set; } = "₨";
+
+    // Subscription & Trial Tracking
+    public SubscriptionStatus? Status { get; set; }
+    public DateTime? TrialEndsAt { get; set; }
+
+    // Paid Subscription Tracking
+    public DateTime? SubscriptionEndsAt { get; set; }
+    public string? SubscriptionPlanName { get; set; }
 
     // Navigation
     public User? Owner { get; set; }
