@@ -20,7 +20,10 @@ public class SubscriptionMiddleware
     {
         // Skip for auth and admin endpoints (so they can still login and admins can manage)
         var path = context.Request.Path.Value;
-        if (string.IsNullOrEmpty(path) || path.Contains("/api/auth") || (path.Contains("/api/shops") && context.Request.Method != "GET"))
+        if (string.IsNullOrEmpty(path)
+            || path.Contains("/api/auth")
+            || path.Contains("/api/admin")
+            || (path.Contains("/api/shops") && context.Request.Method != "GET"))
         {
             await _next(context);
             return;

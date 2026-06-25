@@ -20,106 +20,25 @@ public class AuthService : IAuthService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
     private readonly ApplicationDbContext _db;
-    private readonly ITenantSetupService _tenantSetup;
     private readonly IConfiguration _config;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole<Guid>> roleManager,
         ApplicationDbContext db,
-        ITenantSetupService tenantSetup,
         IConfiguration config)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _db = db;
-        _tenantSetup = tenantSetup;
         _config = config;
     }
 
-    // ── Register ───────────────────────────────────────────────────────────
-    public async Task<ApiResponse<AuthTokenResponse>> RegisterAsync(AuthRegisterRequest req, CancellationToken ct = default)
-    {
-        var tenantId = Guid.NewGuid();
-        var shopId   = Guid.NewGuid();
-        var now      = DateTime.UtcNow;
-
-        await using var tx = await _db.Database.BeginTransactionAsync(ct);
-        try
-        {
-            var shop = new Shop
-            {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                BranchId = shopId,
-                Name = req.ShopName,
-                City = req.City,
-                ActiveStatus = ActiveStatus.Active,
-                CreatedOn = now,
-                UpdatedOn = now
-            };
-            _db.Shops.Add(shop);
-
-            var domainUser = new User
-            {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                BranchId = shopId,
-                Name = req.OwnerName,
-                Email = req.Email,
-                Phone = req.Phone,
-                ShopIds = new List<Guid> { shopId },
-                ActiveStatus = ActiveStatus.Active,
-                CreatedOn = now,
-                UpdatedOn = now
-            };
-
-            var ownerRole = await _roleManager.FindByNameAsync("Owner");
-            if (ownerRole != null) domainUser.RoleIds = new List<Guid> { ownerRole.Id };
-
-            if (!string.IsNullOrWhiteSpace(req.Email) && !string.IsNullOrWhiteSpace(req.Password))
-            {
-                var appUser = new ApplicationUser
-                {
-                    Id = Guid.NewGuid(),
-                    UserName = req.Email,
-                    Email = req.Email,
-                    EmailConfirmed = true
-                };
-                var result = await _userManager.CreateAsync(appUser, req.Password);
-                if (!result.Succeeded)
-                    return ApiResponse<AuthTokenResponse>.Fail(result.Errors.Select(e => e.Description).ToList());
-                await _userManager.AddToRoleAsync(appUser, "Owner");
-                domainUser.AuthId = appUser.Id;
-            }
-            else if (!string.IsNullOrWhiteSpace(req.Phone) && !string.IsNullOrWhiteSpace(req.Passcode))
-            {
-                domainUser.Passcode = BCrypt.Net.BCrypt.HashPassword(req.Passcode);
-            }
-            else
-            {
-                return ApiResponse<AuthTokenResponse>.Fail("Provide either email+password or phone+PIN.");
-            }
-
-            _db.AppUsers.Add(domainUser);
-            shop.OwnerId = domainUser.Id;
-            shop.CreatedBy = domainUser.Id;
-            shop.UpdatedBy = domainUser.Id;
-
-            await _db.SaveChangesAsync(ct);
-            await _tenantSetup.SetupNewTenantAsync(tenantId, shopId, domainUser.Id, ct);
-            await tx.CommitAsync(ct);
-
-            var roleNames = await GetRoleNamesAsync(domainUser.RoleIds);
-            var token = GenerateToken(domainUser, shopId, roleNames);
-            return ApiResponse<AuthTokenResponse>.Ok(token);
-        }
-        catch
-        {
-            await tx.RollbackAsync(ct);
-            throw;
-        }
-    }
+    // ── Register (removed) ─────────────────────────────────────────────────
+    // Owner registration is now handled exclusively by SystemAdmin via:
+    //   POST /api/admin/provision-owner   (Step 1: create owner user)
+    //   POST /api/admin/provision-shop    (Step 2: create shop + link)
+    //   POST /api/admin/provision-subscription (Step 3: set subscription)
 
     // ── Login ──────────────────────────────────────────────────────────────
     public async Task<ApiResponse<AuthTokenResponse>> LoginAsync(AuthLoginRequest req, CancellationToken ct = default)
@@ -162,6 +81,31 @@ public class AuthService : IAuthService
 
     public Task<ApiResponse<AuthTokenResponse>> RefreshAsync(string refreshToken, CancellationToken ct = default)
         => Task.FromResult(ApiResponse<AuthTokenResponse>.Fail("Refresh token not yet implemented."));
+
+    // ── Switch Branch ──────────────────────────────────────────────────────
+    public async Task<ApiResponse<AuthTokenResponse>> SwitchBranchAsync(Guid userId, Guid shopId, CancellationToken ct = default)
+    {
+        // Load domain user (ignore tenant filter — we only have userId, not tenant scoped context here)
+        var domainUser = await _db.AppUsers.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted, ct);
+
+        if (domainUser == null || domainUser.ActiveStatus == ActiveStatus.Inactive)
+            return ApiResponse<AuthTokenResponse>.Fail("User not found or inactive.");
+
+        // Guard: user must be assigned to the requested shop
+        if (!domainUser.ShopIds.Contains(shopId))
+            return ApiResponse<AuthTokenResponse>.Fail("You do not have access to this branch.");
+
+        // Verify the shop exists and is active (use IgnoreQueryFilters since we have no branch context yet)
+        var shop = await _db.Shops.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(s => s.Id == shopId && !s.IsDeleted, ct);
+
+        if (shop == null)
+            return ApiResponse<AuthTokenResponse>.Fail("Branch not found.");
+
+        var roles = await GetRoleNamesAsync(domainUser.RoleIds);
+        return ApiResponse<AuthTokenResponse>.Ok(GenerateToken(domainUser, shopId, roles), $"Switched to branch '{shop.Name}'.");
+    }
 
     public async Task<ApiResponse<object>> ChangePasswordAsync(Guid userId, string current, string newPwd, CancellationToken ct = default)
     {

@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.Interfaces.Services;
 using Application.ViewModels.User;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +8,7 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/users")]
-[Authorize(Roles = "SystemAdmin,Owner,Manager")]
+[Authorize(Roles = $"{AppRoles.Owner},{AppRoles.Manager}")]  // SystemAdmin uses /api/admin/* instead
 public class UsersController : BaseController
 {
     private readonly IUserService _service;
@@ -26,7 +27,7 @@ public class UsersController : BaseController
         => ReturnProcessedResponse(await _service.GetDetailAsync(id, ct));
 
     [HttpPost]
-    [Authorize(Roles = "SystemAdmin,Owner")]
+    [Authorize(Roles = AppRoles.Owner)]
     public async Task<IActionResult> Create([FromBody] CreateUserViewModel vm, CancellationToken ct)
     {
         var result = await _service.CreateAsync(vm, ct);
@@ -40,17 +41,17 @@ public class UsersController : BaseController
         => ReturnProcessedResponse(await _service.UpdateAsync(vm, ct));
 
     [HttpPost("{id}/deactivate")]
-    [Authorize(Roles = "SystemAdmin,Owner")]
+    [Authorize(Roles = AppRoles.Owner)]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct)
         => ReturnProcessedResponse(await _service.DeactivateAsync(id, ct));
 
     [HttpPut("{id}/shops")]
-    [Authorize(Roles = "SystemAdmin,Owner")]
+    [Authorize(Roles = AppRoles.Owner)]
     public async Task<IActionResult> AssignShops(Guid id, [FromBody] List<Guid> shopIds, CancellationToken ct)
         => ReturnProcessedResponse(await _service.AssignShopsAsync(id, shopIds, ct));
 
     [HttpPut("{id}/roles")]
-    [Authorize(Roles = "SystemAdmin,Owner")]
+    [Authorize(Roles = AppRoles.Owner)]
     public async Task<IActionResult> AssignRoles(Guid id, [FromBody] List<Guid> roleIds, CancellationToken ct)
         => ReturnProcessedResponse(await _service.AssignRolesAsync(id, roleIds, ct));
 }

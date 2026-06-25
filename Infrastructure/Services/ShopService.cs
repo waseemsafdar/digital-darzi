@@ -40,7 +40,7 @@ public class ShopService<TCreate, TUpdate, TDetail> :
     {
         var entity = _mapper.Map<Shop>(vm);
         entity.TenantId    = _currentUser.TenantId;
-        entity.BranchId    = _currentUser.ShopId;
+        entity.BranchId    = entity.Id;   // BranchId = Shop.Id — core multi-branch rule
         entity.ActiveStatus= ActiveStatus.Active;
         entity.CreatedBy   = _currentUser.UserId;
         entity.CreatedOn   = DateTime.UtcNow;

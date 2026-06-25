@@ -9,11 +9,13 @@ namespace Infrastructure.Data;
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Microsoft.AspNetCore.Identity.IdentityRole<Guid>, Guid>
 {
     private readonly Guid _tenantId;
+    private readonly Guid _shopId;
 
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, Guid tenantId)
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, Guid tenantId, Guid shopId = default)
         : base(options)
     {
         _tenantId = tenantId;
+        _shopId   = shopId;
     }
 
     // ── Domain tables ──────────────────────────────────────────────────────
@@ -39,24 +41,28 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Microsoft
     {
         base.OnModelCreating(builder);
 
-        // ── Global Query Filters — multi-tenant isolation ───────────────────
+        // ── Global Query Filters ────────────────────────────────────────────
+        // Shop + User: TenantId only — Owner must see all branches and staff across the tenant.
         builder.Entity<Shop>().HasQueryFilter(e => e.TenantId == _tenantId && !e.IsDeleted);
         builder.Entity<Domain.Entities.User>().HasQueryFilter(e => e.TenantId == _tenantId && !e.IsDeleted);
-        builder.Entity<Customer>().HasQueryFilter(e => e.TenantId == _tenantId && !e.IsDeleted);
-        builder.Entity<MeasurementField>().HasQueryFilter(e => e.TenantId == _tenantId && !e.IsDeleted);
-        builder.Entity<MeasurementTemplate>().HasQueryFilter(e => e.TenantId == _tenantId && !e.IsDeleted);
-        builder.Entity<TemplateField>().HasQueryFilter(e => e.TenantId == _tenantId);
-        builder.Entity<MeasurementProfile>().HasQueryFilter(e => e.TenantId == _tenantId && !e.IsDeleted);
-        builder.Entity<Order>().HasQueryFilter(e => e.TenantId == _tenantId && !e.IsDeleted);
-        builder.Entity<OrderItem>().HasQueryFilter(e => e.TenantId == _tenantId && !e.IsDeleted);
-        builder.Entity<OrderItemStageAssignment>().HasQueryFilter(e => e.TenantId == _tenantId);
-        builder.Entity<OrderItemStageLog>().HasQueryFilter(e => e.TenantId == _tenantId);
-        builder.Entity<OrderAlteration>().HasQueryFilter(e => e.TenantId == _tenantId && !e.IsDeleted);
-        builder.Entity<OrderPayment>().HasQueryFilter(e => e.TenantId == _tenantId);
-        builder.Entity<OrderStatusHistory>().HasQueryFilter(e => e.TenantId == _tenantId);
-        builder.Entity<StaffAttendance>().HasQueryFilter(e => e.TenantId == _tenantId && !e.IsDeleted);
-        builder.Entity<ShopExpense>().HasQueryFilter(e => e.TenantId == _tenantId && !e.IsDeleted);
-        builder.Entity<StaffSalary>().HasQueryFilter(e => e.TenantId == _tenantId && !e.IsDeleted);
+
+        // Operational data: TenantId + BranchId — each branch sees only its own records.
+        // BranchId == ShopId (Shop.BranchId = Shop.Id is set at provisioning time).
+        builder.Entity<Customer>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId && !e.IsDeleted);
+        builder.Entity<MeasurementField>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId && !e.IsDeleted);
+        builder.Entity<MeasurementTemplate>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId && !e.IsDeleted);
+        builder.Entity<TemplateField>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId);
+        builder.Entity<MeasurementProfile>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId && !e.IsDeleted);
+        builder.Entity<Order>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId && !e.IsDeleted);
+        builder.Entity<OrderItem>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId && !e.IsDeleted);
+        builder.Entity<OrderItemStageAssignment>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId);
+        builder.Entity<OrderItemStageLog>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId);
+        builder.Entity<OrderAlteration>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId && !e.IsDeleted);
+        builder.Entity<OrderPayment>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId);
+        builder.Entity<OrderStatusHistory>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId);
+        builder.Entity<StaffAttendance>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId && !e.IsDeleted);
+        builder.Entity<ShopExpense>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId && !e.IsDeleted);
+        builder.Entity<StaffSalary>().HasQueryFilter(e => e.TenantId == _tenantId && e.BranchId == _shopId && !e.IsDeleted);
 
         // ── Postgres array types for User.RoleIds / ShopIds ─────────────────
         builder.Entity<Domain.Entities.User>()

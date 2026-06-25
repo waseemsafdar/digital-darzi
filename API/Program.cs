@@ -16,17 +16,18 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 var connStr = builder.Configuration.GetConnectionString("DefaultConnection")!;
 
-// ── DbContext — per-request TenantId via IHttpContextAccessor ────────────
-// Override with TenantId-aware scoped factory so each request gets its own context.
+// ── DbContext — per-request TenantId + ShopId (BranchId) via JWT claims ──
 builder.Services.AddScoped<ApplicationDbContext>(sp =>
 {
-    var accessor = sp.GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
-    var tenantClaim = accessor?.HttpContext?.User?.FindFirst("tenantId")?.Value;
-    var tenantId = Guid.TryParse(tenantClaim, out var tid) ? tid : Guid.Empty;
+    var accessor  = sp.GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
+    var user      = accessor?.HttpContext?.User;
+
+    var tenantId  = Guid.TryParse(user?.FindFirst("tenantId")?.Value, out var tid) ? tid : Guid.Empty;
+    var shopId    = Guid.TryParse(user?.FindFirst("shopId")?.Value,   out var sid) ? sid : Guid.Empty;
 
     var optBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
     optBuilder.UseNpgsql(connStr);
-    return new ApplicationDbContext(optBuilder.Options, tenantId);
+    return new ApplicationDbContext(optBuilder.Options, tenantId, shopId);
 });
 
 // DbContextOptions needed by Identity internals
@@ -81,6 +82,7 @@ builder.Services.AddScoped<IMeasurementService, MeasurementService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IFinanceService, FinanceService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAdminProvisioningService, AdminProvisioningService>();
 builder.Services.AddScoped<IKarigarService, KarigarService>();
 builder.Services.AddScoped<IReportingService, ReportingService>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
@@ -147,7 +149,7 @@ using (var scope = app.Services.CreateScope())
 {
     var optBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
     optBuilder.UseNpgsql(connStr);
-    var db = new ApplicationDbContext(optBuilder.Options, Guid.Empty);
+    var db = new ApplicationDbContext(optBuilder.Options, Guid.Empty, Guid.Empty);
 
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();

@@ -16,15 +16,6 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
-    /// <summary>Register a new shop + owner account.</summary>
-    [HttpPost("register")]
-    [AllowAnonymous]
-    public async Task<IActionResult> Register([FromBody] AuthRegisterRequest request, CancellationToken ct)
-    {
-        var result = await _authService.RegisterAsync(request, ct);
-        return result.Success ? Ok(result) : BadRequest(result);
-    }
-
     /// <summary>Login via email+password or phone+PIN.</summary>
     [HttpPost("login")]
     [AllowAnonymous]
@@ -66,7 +57,19 @@ public class AuthController : ControllerBase
         var result = await _authService.ChangePinAsync(currentUser.UserId, request.CurrentPin, request.NewPin, ct);
         return result.Success ? Ok(result) : BadRequest(result);
     }
+    /// <summary>Switch the caller's active branch. Returns a new JWT scoped to the target shop.</summary>
+    [HttpPost("switch-branch")]
+    [Authorize]
+    public async Task<IActionResult> SwitchBranch(
+        [FromBody] SwitchBranchRequest request,
+        [FromServices] ICurrentUserService currentUser,
+        CancellationToken ct)
+    {
+        var result = await _authService.SwitchBranchAsync(currentUser.UserId, request.ShopId, ct);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
 }
 
 public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 public record ChangePinRequest(string CurrentPin, string NewPin);
+public record SwitchBranchRequest(Guid ShopId);

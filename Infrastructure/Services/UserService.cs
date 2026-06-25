@@ -103,6 +103,21 @@ public class UserService : IUserService
         if (string.IsNullOrWhiteSpace(vm.Email) && string.IsNullOrWhiteSpace(vm.Phone))
             return ApiResponse<UserDetailViewModel>.Fail("Either email or phone is required.");
 
+        // Guard: Owner/SystemAdmin can only be provisioned through /api/admin/provision-owner.
+        // Reject any attempt to create a staff member with an elevated role.
+        if (vm.RoleIds.Any())
+        {
+            var requestedRoleNames = await _db.Roles
+                .Where(r => vm.RoleIds.Contains(r.Id))
+                .Select(r => r.Name!)
+                .ToListAsync(ct);
+
+            var restricted = new[] { AppRoles.SystemAdmin, AppRoles.Owner };
+            if (requestedRoleNames.Any(r => restricted.Contains(r)))
+                return ApiResponse<UserDetailViewModel>.Fail(
+                    $"Cannot assign '{AppRoles.Owner}' or '{AppRoles.SystemAdmin}' roles here. Use admin provisioning.");
+        }
+
         var now = DateTime.UtcNow;
         Guid? authId = null;
 
@@ -231,6 +246,21 @@ public class UserService : IUserService
     {
         var user = await _db.AppUsers.FirstOrDefaultAsync(u => u.Id == id, ct);
         if (user == null) return ApiResponse<object>.Fail("User not found.");
+
+        // Guard: prevent escalating a staff member to Owner or SystemAdmin.
+        // Those roles are managed exclusively via /api/admin/.
+        if (roleIds.Any())
+        {
+            var requestedRoleNames = await _db.Roles
+                .Where(r => roleIds.Contains(r.Id))
+                .Select(r => r.Name!)
+                .ToListAsync(ct);
+
+            var restricted = new[] { AppRoles.SystemAdmin, AppRoles.Owner };
+            if (requestedRoleNames.Any(r => restricted.Contains(r)))
+                return ApiResponse<object>.Fail(
+                    $"Cannot assign '{AppRoles.Owner}' or '{AppRoles.SystemAdmin}' roles here. Use admin provisioning.");
+        }
 
         user.RoleIds   = roleIds;
         user.UpdatedBy = _currentUser.UserId;
