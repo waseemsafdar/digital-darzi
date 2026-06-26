@@ -1,0 +1,2738 @@
+openapi: 3.0.1
+info:
+  title: Digital Darzi API
+  description: |
+    Multi-tenant tailor shop management system.
+
+    ## Authentication
+    All endpoints (except `POST /api/auth/login`) require a JWT Bearer token.
+    Include `Authorization: Bearer <token>` in every request.
+
+    ## Multi-Branch Isolation
+    The JWT `shopId` claim determines the active branch.
+    All operational data (orders, customers, measurements, finance) is scoped to that branch.
+    Use `POST /api/auth/switch-branch` to change the active branch.
+  version: v1
+
+servers:
+  - url: /
+    description: Default Server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication, branch switching, and credential management
+  - name: AdminProvisioning
+    description: System Admin only — owner/shop/subscription provisioning (crosses all tenants)
+  - name: Shops
+    description: Shop (branch) management
+  - name: Users
+    description: Staff user management within a tenant
+  - name: Customers
+    description: Customer management
+  - name: Measurements
+    description: Measurement fields, templates, and customer profiles
+  - name: Orders
+    description: Order lifecycle, payments, alterations, and production stage workflow
+  - name: Karigar
+    description: Karigar (worker) task queue and performance
+  - name: Finance
+    description: Expenses, salaries, attendance, and finance summary
+  - name: Reports
+    description: Analytics and reporting dashboards
+
+# ─────────────────────────────────────────────────────────────────────────────
+paths:
+
+  # ── AUTH ──────────────────────────────────────────────────────────────────
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login — email+password or phone+PIN
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginRequest'
+            examples:
+              email:
+                summary: Email + Password
+                value: { email: "owner@shop.com", password: "Password123!" }
+              phone:
+                summary: Phone + PIN
+                value: { phone: "03001234567", passcode: "1234" }
+      responses:
+        '200':
+          description: Authenticated — returns JWT token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseAuthToken'
+        '401':
+          description: Invalid credentials or inactive account
+
+  /api/auth/switch-branch:
+    post:
+      tags: [Auth]
+      summary: Switch active branch — re-issues JWT scoped to target shopId
+      description: |
+        The caller's userId is taken from the current JWT (not the request body).
+        The target shopId must be in the user's ShopIds list.
+        Returns a new JWT — replace the old token with this one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwitchBranchRequest'
+      responses:
+        '200':
+          description: New JWT scoped to the target branch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseAuthToken'
+        '400':
+          description: shopId not in user's assigned shops, or shop not found
+
+  /api/auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Change password (email+password users)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: Password changed
+        '400':
+          description: Current password incorrect or validation failed
+
+  /api/auth/change-pin:
+    post:
+      tags: [Auth]
+      summary: Change PIN (phone+PIN users)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePinRequest'
+      responses:
+        '200':
+          description: PIN changed
+        '400':
+          description: Current PIN incorrect
+
+  # ── ADMIN PROVISIONING ────────────────────────────────────────────────────
+
+  /api/admin/provision-owner:
+    post:
+      tags: [AdminProvisioning]
+      summary: "Step 1 — Create owner user + Identity account"
+      description: |
+        Provide either Email+Password (standard login) or Phone+Passcode (PIN login).
+        Returns UserId and TenantId needed for Step 2.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProvisionOwnerRequest'
+      responses:
+        '200':
+          description: Owner provisioned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseProvisionOwnerResult'
+        '400':
+          description: Duplicate email/phone or validation error
+
+  /api/admin/provision-shop:
+    post:
+      tags: [AdminProvisioning]
+      summary: "Step 2 — Create shop and link to owner; seeds measurement data"
+      description: |
+        BranchId is automatically set equal to Shop.Id.
+        Automatically seeds tenant measurement fields and templates.
+        Must be called after provision-owner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProvisionShopRequest'
+      responses:
+        '200':
+          description: Shop provisioned and linked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseProvisionShopResult'
+        '400':
+          description: Owner not found
+
+  /api/admin/provision-subscription:
+    post:
+      tags: [AdminProvisioning]
+      summary: "Step 3 — Set subscription status for a shop"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProvisionSubscriptionRequest'
+      responses:
+        '200':
+          description: Subscription set
+        '400':
+          description: Shop not found
+
+  /api/admin/subscription/activate/{shopId}:
+    post:
+      tags: [AdminProvisioning]
+      summary: Activate a shop's subscription
+      parameters:
+        - $ref: '#/components/parameters/shopIdPath'
+      responses:
+        '200':
+          description: Subscription activated
+
+  /api/admin/subscription/suspend/{shopId}:
+    post:
+      tags: [AdminProvisioning]
+      summary: Suspend a shop's subscription
+      parameters:
+        - $ref: '#/components/parameters/shopIdPath'
+      responses:
+        '200':
+          description: Subscription suspended
+
+  /api/admin/subscription/extend/{shopId}:
+    post:
+      tags: [AdminProvisioning]
+      summary: Extend trial or subscription end date by N days
+      parameters:
+        - $ref: '#/components/parameters/shopIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtendSubscriptionRequest'
+      responses:
+        '200':
+          description: Subscription extended
+
+  /api/admin/user-role/{userId}:
+    put:
+      tags: [AdminProvisioning]
+      summary: Update any user's role (across all tenants)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRoleRequest'
+      responses:
+        '200':
+          description: Role updated
+
+  /api/admin/owners:
+    get:
+      tags: [AdminProvisioning]
+      summary: List all Owner accounts across all tenants
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Paginated list of owners
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePagedUserList'
+
+  /api/admin/shops:
+    get:
+      tags: [AdminProvisioning]
+      summary: List all shops across all tenants
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Paginated list of shops
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePagedShopList'
+
+  # ── SHOPS ─────────────────────────────────────────────────────────────────
+
+  /api/shops:
+    get:
+      tags: [Shops]
+      summary: List shops in current tenant
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Paginated shop list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePagedShopList'
+    post:
+      tags: [Shops]
+      summary: Create a new shop/branch — Owner or SystemAdmin only
+      description: BranchId is automatically set to the new shop's own Id.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShopViewModel'
+      responses:
+        '201':
+          description: Shop created — returns new shop Guid
+        '400':
+          description: Validation error
+    put:
+      tags: [Shops]
+      summary: Update shop details — Owner or Manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateShopViewModel'
+      responses:
+        '200':
+          description: Updated
+
+  /api/shops/{id}:
+    get:
+      tags: [Shops]
+      summary: Get shop detail
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Shop detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseShopDetail'
+        '404':
+          description: Not found
+    delete:
+      tags: [Shops]
+      summary: Delete a shop — SystemAdmin or Owner
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Deleted
+
+  /api/shops/{id}/subscription:
+    put:
+      tags: [Shops]
+      summary: Update subscription on a shop — SystemAdmin only
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateShopSubscriptionRequest'
+      responses:
+        '200':
+          description: Subscription updated
+
+  # ── USERS ─────────────────────────────────────────────────────────────────
+
+  /api/users:
+    get:
+      tags: [Users]
+      summary: List staff users — Owner or Manager
+      parameters:
+        - name: shopId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Paginated user list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePagedUserList'
+    post:
+      tags: [Users]
+      summary: Create staff user — Owner only
+      description: Cannot assign Owner or SystemAdmin roles here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserViewModel'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserDetail'
+        '400':
+          description: Validation error or restricted role
+    put:
+      tags: [Users]
+      summary: Update staff user — Owner or Manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserViewModel'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserDetail'
+
+  /api/users/{id}:
+    get:
+      tags: [Users]
+      summary: Get user detail — Owner or Manager
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: User detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseUserDetail'
+        '404':
+          description: Not found
+
+  /api/users/{id}/deactivate:
+    post:
+      tags: [Users]
+      summary: Deactivate user and lock Identity account — Owner only
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: User deactivated
+
+  /api/users/{id}/shops:
+    put:
+      tags: [Users]
+      summary: Assign shops to user — Owner only
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                format: uuid
+      responses:
+        '200':
+          description: Shops assigned
+
+  /api/users/{id}/roles:
+    put:
+      tags: [Users]
+      summary: Assign roles to user — Owner only
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                format: uuid
+      responses:
+        '200':
+          description: Roles updated
+
+  # ── CUSTOMERS ─────────────────────────────────────────────────────────────
+
+  /api/customers:
+    get:
+      tags: [Customers]
+      summary: List customers in current branch
+      parameters:
+        - name: query
+          in: query
+          description: Search by name or phone
+          schema:
+            type: string
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: gender
+          in: query
+          schema:
+            $ref: '#/components/schemas/Gender'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Paginated customer list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePagedCustomerList'
+    post:
+      tags: [Customers]
+      summary: Create a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerViewModel'
+      responses:
+        '201':
+          description: Customer created
+        '400':
+          description: Duplicate phone or validation error
+    put:
+      tags: [Customers]
+      summary: Update a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCustomerViewModel'
+      responses:
+        '200':
+          description: Updated
+
+  /api/customers/{id}:
+    get:
+      tags: [Customers]
+      summary: Get customer detail
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Customer detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseCustomerDetail'
+        '404':
+          description: Not found
+    delete:
+      tags: [Customers]
+      summary: Delete a customer — Owner or Manager
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Deleted
+
+  /api/customers/{id}/ledger:
+    get:
+      tags: [Customers]
+      summary: Customer order + payment ledger
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Customer ledger
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseCustomerLedger'
+
+  # ── MEASUREMENTS ──────────────────────────────────────────────────────────
+
+  /api/measurements/fields:
+    get:
+      tags: [Measurements]
+      summary: Get measurement field definitions for this branch
+      responses:
+        '200':
+          description: List of measurement fields
+    post:
+      tags: [Measurements]
+      summary: Create a measurement field — Owner or Manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMeasurementFieldViewModel'
+      responses:
+        '200':
+          description: Field created
+
+  /api/measurements/fields/{id}:
+    put:
+      tags: [Measurements]
+      summary: Update measurement field
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMeasurementFieldViewModel'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Measurements]
+      summary: Delete measurement field
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Deleted
+
+  /api/measurements/templates:
+    get:
+      tags: [Measurements]
+      summary: List garment templates for this branch
+      responses:
+        '200':
+          description: Template list
+    post:
+      tags: [Measurements]
+      summary: Create a template — Owner or Manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemplateViewModel'
+      responses:
+        '200':
+          description: Template created
+
+  /api/measurements/templates/{id}:
+    get:
+      tags: [Measurements]
+      summary: Get template detail with fields
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Template detail
+    put:
+      tags: [Measurements]
+      summary: Update template
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTemplateViewModel'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Measurements]
+      summary: Delete template
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Deleted
+
+  /api/measurements/profiles:
+    post:
+      tags: [Measurements]
+      summary: Save a new measurement profile for a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveMeasurementProfileViewModel'
+      responses:
+        '200':
+          description: Profile saved
+
+  /api/measurements/profiles/customer/{customerId}:
+    get:
+      tags: [Measurements]
+      summary: Get all measurement profiles for a customer
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Profile list
+
+  /api/measurements/profiles/{id}:
+    get:
+      tags: [Measurements]
+      summary: Get measurement profile detail
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Profile detail
+    put:
+      tags: [Measurements]
+      summary: Update a measurement profile
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveMeasurementProfileViewModel'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Measurements]
+      summary: Delete a measurement profile
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Deleted
+
+  # ── ORDERS ────────────────────────────────────────────────────────────────
+
+  /api/orders:
+    get:
+      tags: [Orders]
+      summary: Search/list orders in current branch
+      parameters:
+        - name: query
+          in: query
+          description: Order number or customer name
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/OrderStatus'
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Paginated order list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponsePagedOrderList'
+    post:
+      tags: [Orders]
+      summary: Create a new order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderViewModel'
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseOrderDetail'
+        '400':
+          description: Validation error
+    put:
+      tags: [Orders]
+      summary: Update an order — Owner or Manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrderViewModel'
+      responses:
+        '200':
+          description: Updated
+
+  /api/orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Get order detail with items, payments, and alterations
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseOrderDetail'
+        '404':
+          description: Not found
+
+  /api/orders/customer/{customerId}:
+    get:
+      tags: [Orders]
+      summary: Get all orders for a customer
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Customer orders
+
+  /api/orders/due-today:
+    get:
+      tags: [Orders]
+      summary: Orders due for delivery today
+      responses:
+        '200':
+          description: Due today list
+
+  /api/orders/overdue:
+    get:
+      tags: [Orders]
+      summary: Orders past delivery date and not yet delivered
+      responses:
+        '200':
+          description: Overdue orders
+
+  /api/orders/{id}/status:
+    patch:
+      tags: [Orders]
+      summary: Update order status — Owner or Manager
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderStatus'
+      responses:
+        '200':
+          description: Status updated
+
+  /api/orders/{id}/payments:
+    post:
+      tags: [Orders]
+      summary: Record a payment against an order
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordOrderPaymentViewModel'
+      responses:
+        '200':
+          description: Payment recorded
+
+  /api/orders/{id}/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel an order — Owner or Manager
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Order cancelled
+
+  /api/orders/{id}/deliver:
+    post:
+      tags: [Orders]
+      summary: Mark order as delivered — Owner, Manager, or Receptionist
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Order delivered
+
+  /api/orders/alterations:
+    post:
+      tags: [Orders]
+      summary: Log an alteration request on an order item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderAlterationViewModel'
+      responses:
+        '200':
+          description: Alteration logged
+
+  /api/orders/stages/log:
+    post:
+      tags: [Orders]
+      summary: Log start of a production stage — Owner, Manager, or Karigar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordStageLogViewModel'
+      responses:
+        '200':
+          description: Stage log recorded
+
+  /api/orders/stages/complete:
+    post:
+      tags: [Orders]
+      summary: Mark a production stage as complete — Owner, Manager, or Karigar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteStageViewModel'
+      responses:
+        '200':
+          description: Stage completed
+
+  /api/orders/stages/assign:
+    post:
+      tags: [Orders]
+      summary: Assign a production stage to a karigar — Owner or Manager
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignStageViewModel'
+      responses:
+        '200':
+          description: Stage assigned
+
+  # ── KARIGAR ───────────────────────────────────────────────────────────────
+
+  /api/karigar/my-queue:
+    get:
+      tags: [Karigar]
+      summary: Logged-in karigar's own work queue
+      responses:
+        '200':
+          description: Work queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseKarigarQueue'
+
+  /api/karigar/{karigarId}/queue:
+    get:
+      tags: [Karigar]
+      summary: Work queue for a specific karigar — Owner or Manager
+      parameters:
+        - name: karigarId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Karigar's work queue
+
+  /api/karigar/performance:
+    get:
+      tags: [Karigar]
+      summary: Performance summary for all karigars — Owner or Manager
+      responses:
+        '200':
+          description: Performance list
+
+  # ── FINANCE ───────────────────────────────────────────────────────────────
+
+  /api/finance/summary:
+    get:
+      tags: [Finance]
+      summary: Finance dashboard — revenue, expenses, net profit
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Finance summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponseFinanceSummary'
+
+  /api/finance/expenses:
+    get:
+      tags: [Finance]
+      summary: List shop expenses
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: category
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Expense list
+    post:
+      tags: [Finance]
+      summary: Record a new expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShopExpenseViewModel'
+      responses:
+        '200':
+          description: Expense recorded
+
+  /api/finance/expenses/{id}:
+    put:
+      tags: [Finance]
+      summary: Update an expense
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateShopExpenseViewModel'
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Finance]
+      summary: Delete an expense — Owner only
+      parameters:
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: Deleted
+
+  /api/finance/salaries:
+    get:
+      tags: [Finance]
+      summary: List salary records
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: integer
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: staffId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Salary list
+    post:
+      tags: [Finance]
+      summary: Record a salary payout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordStaffSalaryViewModel'
+      responses:
+        '200':
+          description: Salary recorded
+
+  /api/finance/attendance:
+    get:
+      tags: [Finance]
+      summary: List attendance records
+      parameters:
+        - name: staffId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Attendance list
+    post:
+      tags: [Finance]
+      summary: Record attendance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordAttendanceViewModel'
+      responses:
+        '200':
+          description: Attendance recorded
+
+  /api/finance/attendance/summary:
+    get:
+      tags: [Finance]
+      summary: Attendance summary for a staff member by month
+      parameters:
+        - name: staffId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: month
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Attendance summary
+
+  # ── REPORTS ───────────────────────────────────────────────────────────────
+
+  /api/reports/dashboard:
+    get:
+      tags: [Reports]
+      summary: Full dashboard — orders, revenue, customers, stage counts
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Dashboard data
+
+  /api/reports/revenue:
+    get:
+      tags: [Reports]
+      summary: Revenue P&L — by garment type and payment method
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Revenue report
+
+  /api/reports/daily-revenue:
+    get:
+      tags: [Reports]
+      summary: Daily revenue breakdown (chart data)
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Day-by-day revenue
+
+  /api/reports/top-customers:
+    get:
+      tags: [Reports]
+      summary: Top customers by spend
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Top customer list
+
+  /api/reports/staff-performance:
+    get:
+      tags: [Reports]
+      summary: Staff performance — stages completed, earnings, attendance rate
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Staff performance
+
+  /api/reports/order-status:
+    get:
+      tags: [Reports]
+      summary: Current order status counts and stage queues
+      responses:
+        '200':
+          description: Order status report
+
+  /api/reports/pending-balances:
+    get:
+      tags: [Reports]
+      summary: All orders with outstanding balance due
+      responses:
+        '200':
+          description: Pending balance list
+
+# ─────────────────────────────────────────────────────────────────────────────
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    idPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    shopIdPath:
+      name: shopId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+
+    pageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        default: 20
+
+  schemas:
+
+    # ── Enums ──────────────────────────────────────────────────────────────
+
+    ActiveStatus:
+      type: string
+      enum: [Inactive, Active]
+
+    Gender:
+      type: string
+      enum: [Male, Female, Other]
+
+    GarmentType:
+      type: string
+      enum: [ShalwarKameez, Suit, Sherwani, Coat, Trouser, Shirt, Frock, Lehnga, Kurta, Waistcoat, Other]
+
+    OrderStatus:
+      type: string
+      enum: [Pending, Received, Cutting, Stitching, Embroidery, Finishing, TrialReady, TrialDone, ReadyToDeliver, PartiallyDelivered, Delivered, Cancelled, FullyPaid]
+
+    OrderItemStatus:
+      type: string
+      enum: [Pending, InProgress, Done, Delivered, Cancelled]
+
+    ProductionStage:
+      type: string
+      enum: [Cutting, Stitching, Embroidery, Ironing, Finishing, QualityCheck]
+
+    PaymentMethod:
+      type: string
+      enum: [Cash, JazzCash, EasyPaisa, BankTransfer, Other]
+
+    MeasurementUnit:
+      type: string
+      enum: [Inch, CM, MM]
+
+    AttendanceStatus:
+      type: string
+      enum: [Present, Absent, HalfDay, Leave, Holiday]
+
+    SubscriptionStatus:
+      type: string
+      enum: [Trial, Active, Suspended, Cancelled]
+
+    # ── Auth ───────────────────────────────────────────────────────────────
+
+    AuthLoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        phone:
+          type: string
+        passcode:
+          type: string
+          description: 4-digit PIN for phone+PIN login
+
+    AuthTokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        userName:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        shopId:
+          type: string
+          format: uuid
+          description: Active branch — all data requests are scoped to this
+        roles:
+          type: array
+          items:
+            type: string
+
+    SwitchBranchRequest:
+      type: object
+      required: [shopId]
+      properties:
+        shopId:
+          type: string
+          format: uuid
+          description: Must be in the current user's ShopIds list
+
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+
+    ChangePinRequest:
+      type: object
+      required: [currentPin, newPin]
+      properties:
+        currentPin:
+          type: string
+        newPin:
+          type: string
+
+    # ── Admin ──────────────────────────────────────────────────────────────
+
+    ProvisionOwnerRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        phone:
+          type: string
+        passcode:
+          type: string
+
+    ProvisionOwnerResult:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+
+    ProvisionShopRequest:
+      type: object
+      required: [userId, shopName]
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: Domain UserId of the owner (from Step 1)
+        shopName:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        phone:
+          type: string
+        whatsAppNumber:
+          type: string
+        logoUrl:
+          type: string
+        currency:
+          type: string
+          default: PKR
+        currencySymbol:
+          type: string
+          default: "₨"
+
+    ProvisionShopResult:
+      type: object
+      properties:
+        shopId:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        shopName:
+          type: string
+
+    ProvisionSubscriptionRequest:
+      type: object
+      properties:
+        shopId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        trialDays:
+          type: integer
+          default: 14
+        subscriptionEndsAt:
+          type: string
+          format: date-time
+        planName:
+          type: string
+
+    ExtendSubscriptionRequest:
+      type: object
+      required: [days]
+      properties:
+        days:
+          type: integer
+          minimum: 1
+
+    UpdateUserRoleRequest:
+      type: object
+      required: [newRole]
+      properties:
+        newRole:
+          type: string
+
+    # ── Shop ───────────────────────────────────────────────────────────────
+
+    CreateShopViewModel:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        phone:
+          type: string
+        whatsAppNumber:
+          type: string
+        logoUrl:
+          type: string
+        currency:
+          type: string
+          default: PKR
+        currencySymbol:
+          type: string
+          default: "₨"
+
+    UpdateShopViewModel:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        phone:
+          type: string
+        whatsAppNumber:
+          type: string
+        logoUrl:
+          type: string
+        currency:
+          type: string
+        currencySymbol:
+          type: string
+        activeStatus:
+          $ref: '#/components/schemas/ActiveStatus'
+
+    ShopListViewModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        city:
+          type: string
+        phone:
+          type: string
+        activeStatus:
+          $ref: '#/components/schemas/ActiveStatus'
+        createdOn:
+          type: string
+          format: date-time
+
+    ShopDetailViewModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        branchId:
+          type: string
+          format: uuid
+          description: Always equals id (BranchId = ShopId rule)
+        name:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        phone:
+          type: string
+        whatsAppNumber:
+          type: string
+        logoUrl:
+          type: string
+        currency:
+          type: string
+        currencySymbol:
+          type: string
+        ownerId:
+          type: string
+          format: uuid
+        ownerName:
+          type: string
+        activeStatus:
+          $ref: '#/components/schemas/ActiveStatus'
+        status:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        trialEndsAt:
+          type: string
+          format: date-time
+        subscriptionEndsAt:
+          type: string
+          format: date-time
+        subscriptionPlanName:
+          type: string
+        createdOn:
+          type: string
+          format: date-time
+
+    UpdateShopSubscriptionRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        subscriptionEndsAt:
+          type: string
+          format: date-time
+        subscriptionPlanName:
+          type: string
+
+    # ── User ───────────────────────────────────────────────────────────────
+
+    CreateUserViewModel:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        phone:
+          type: string
+        passcode:
+          type: string
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        shopIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    UpdateUserViewModel:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        shopIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        activeStatus:
+          $ref: '#/components/schemas/ActiveStatus'
+
+    UserListViewModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        activeStatus:
+          $ref: '#/components/schemas/ActiveStatus'
+        lastLoginDate:
+          type: string
+          format: date-time
+
+    UserDetailViewModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        roleNames:
+          type: array
+          items:
+            type: string
+        shopIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        activeStatus:
+          $ref: '#/components/schemas/ActiveStatus'
+        lastLoginDate:
+          type: string
+          format: date-time
+        loginCount:
+          type: integer
+        createdOn:
+          type: string
+          format: date-time
+
+    # ── Customer ───────────────────────────────────────────────────────────
+
+    CreateCustomerViewModel:
+      type: object
+      required: [name, phone]
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        dateOfBirth:
+          type: string
+          format: date
+        notes:
+          type: string
+
+    UpdateCustomerViewModel:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        dateOfBirth:
+          type: string
+          format: date
+        notes:
+          type: string
+        activeStatus:
+          $ref: '#/components/schemas/ActiveStatus'
+
+    CustomerListViewModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+        city:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        totalOrders:
+          type: integer
+        totalSpend:
+          type: number
+        loyaltyTier:
+          type: string
+        activeStatus:
+          $ref: '#/components/schemas/ActiveStatus'
+
+    CustomerDetailViewModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        dateOfBirth:
+          type: string
+          format: date
+        notes:
+          type: string
+        totalOrders:
+          type: integer
+        totalSpend:
+          type: number
+        loyaltyPoints:
+          type: integer
+        loyaltyTier:
+          type: string
+        activeStatus:
+          $ref: '#/components/schemas/ActiveStatus'
+        createdOn:
+          type: string
+          format: date-time
+
+    CustomerLedgerViewModel:
+      type: object
+      properties:
+        customerId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+        totalGrand:
+          type: number
+        totalPaid:
+          type: number
+        totalDue:
+          type: number
+        orders:
+          type: array
+          items:
+            type: object
+            properties:
+              orderId:
+                type: string
+                format: uuid
+              orderNumber:
+                type: string
+              grandTotal:
+                type: number
+              amountPaid:
+                type: number
+              balanceDue:
+                type: number
+              status:
+                type: string
+              deliveryDate:
+                type: string
+                format: date-time
+
+    # ── Measurement ────────────────────────────────────────────────────────
+
+    CreateMeasurementFieldViewModel:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        unit:
+          $ref: '#/components/schemas/MeasurementUnit'
+        sortOrder:
+          type: integer
+
+    UpdateMeasurementFieldViewModel:
+      type: object
+      properties:
+        name:
+          type: string
+        unit:
+          $ref: '#/components/schemas/MeasurementUnit'
+        sortOrder:
+          type: integer
+
+    CreateTemplateViewModel:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        garmentType:
+          $ref: '#/components/schemas/GarmentType'
+        isDefault:
+          type: boolean
+        displayOrder:
+          type: integer
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateFieldItemViewModel'
+
+    UpdateTemplateViewModel:
+      type: object
+      properties:
+        name:
+          type: string
+        garmentType:
+          $ref: '#/components/schemas/GarmentType'
+        isDefault:
+          type: boolean
+        displayOrder:
+          type: integer
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/TemplateFieldItemViewModel'
+
+    TemplateFieldItemViewModel:
+      type: object
+      required: [measurementFieldId]
+      properties:
+        measurementFieldId:
+          type: string
+          format: uuid
+        isRequired:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    SaveMeasurementProfileViewModel:
+      type: object
+      required: [customerId, templateId, values]
+      properties:
+        customerId:
+          type: string
+          format: uuid
+        templateId:
+          type: string
+          format: uuid
+        profileName:
+          type: string
+          example: "Suit Measurements"
+        values:
+          type: object
+          additionalProperties:
+            type: number
+          description: "Key = MeasurementFieldId (Guid), Value = numeric measurement"
+          example:
+            "3fa85f64-5717-4562-b3fc-2c963f66afa6": 42.5
+        notes:
+          type: string
+
+    # ── Order ──────────────────────────────────────────────────────────────
+
+    CreateOrderViewModel:
+      type: object
+      required: [customerId, deliveryDate, items]
+      properties:
+        customerId:
+          type: string
+          format: uuid
+        deliveryDate:
+          type: string
+          format: date-time
+        notes:
+          type: string
+        specialInstructions:
+          type: string
+        discount:
+          type: number
+          default: 0
+        advancePayment:
+          type: number
+          default: 0
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateOrderItemViewModel'
+
+    CreateOrderItemViewModel:
+      type: object
+      required: [garmentType, price]
+      properties:
+        garmentType:
+          $ref: '#/components/schemas/GarmentType'
+        measurementProfileId:
+          type: string
+          format: uuid
+          description: Use a saved customer profile (preferred)
+        templateId:
+          type: string
+          format: uuid
+          description: Or specify template for inline measurements
+        inlineMeasurements:
+          type: object
+          additionalProperties:
+            type: number
+          description: FieldId -> value (used when no profileId provided)
+        fabricDescription:
+          type: string
+        fabricColor:
+          type: string
+        styleNotes:
+          type: string
+        price:
+          type: number
+        qty:
+          type: integer
+          default: 1
+        stageAssignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateOrderItemStageAssignmentViewModel'
+
+    CreateOrderItemStageAssignmentViewModel:
+      type: object
+      required: [stage]
+      properties:
+        stage:
+          $ref: '#/components/schemas/ProductionStage'
+        assignedKarigarId:
+          type: string
+          format: uuid
+        stagePrice:
+          type: number
+        estimatedDays:
+          type: integer
+
+    UpdateOrderViewModel:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        deliveryDate:
+          type: string
+          format: date-time
+        notes:
+          type: string
+        specialInstructions:
+          type: string
+        discount:
+          type: number
+
+    RecordOrderPaymentViewModel:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: number
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        note:
+          type: string
+        paidAt:
+          type: string
+          format: date-time
+
+    CreateOrderAlterationViewModel:
+      type: object
+      required: [orderItemId, description]
+      properties:
+        orderItemId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        additionalCharge:
+          type: number
+          default: 0
+        deliveryDate:
+          type: string
+          format: date-time
+
+    RecordStageLogViewModel:
+      type: object
+      required: [orderItemId, stage, karigarId]
+      properties:
+        orderItemId:
+          type: string
+          format: uuid
+        stage:
+          $ref: '#/components/schemas/ProductionStage'
+        karigarId:
+          type: string
+          format: uuid
+        notes:
+          type: string
+
+    CompleteStageViewModel:
+      type: object
+      required: [orderItemId, stage]
+      properties:
+        orderItemId:
+          type: string
+          format: uuid
+        stage:
+          $ref: '#/components/schemas/ProductionStage'
+        notes:
+          type: string
+
+    AssignStageViewModel:
+      type: object
+      required: [orderItemId, stage, assignedKarigarId]
+      properties:
+        orderItemId:
+          type: string
+          format: uuid
+        stage:
+          $ref: '#/components/schemas/ProductionStage'
+        assignedKarigarId:
+          type: string
+          format: uuid
+        stagePrice:
+          type: number
+        estimatedDays:
+          type: integer
+
+    OrderListViewModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderNumber:
+          type: string
+        customerId:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        customerPhone:
+          type: string
+        itemCount:
+          type: integer
+        grandTotal:
+          type: number
+        amountPaid:
+          type: number
+        balanceDue:
+          type: number
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        deliveryDate:
+          type: string
+          format: date-time
+        createdOn:
+          type: string
+          format: date-time
+
+    OrderDetailViewModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderNumber:
+          type: string
+        customerId:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        customerPhone:
+          type: string
+        deliveryDate:
+          type: string
+          format: date-time
+        notes:
+          type: string
+        specialInstructions:
+          type: string
+        subTotal:
+          type: number
+        discount:
+          type: number
+        grandTotal:
+          type: number
+        amountPaid:
+          type: number
+        balanceDue:
+          type: number
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        createdOn:
+          type: string
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItemDetailViewModel'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderPaymentDetailViewModel'
+        alterations:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderAlterationViewModel'
+
+    OrderItemDetailViewModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        garmentType:
+          $ref: '#/components/schemas/GarmentType'
+        fabricDescription:
+          type: string
+        fabricColor:
+          type: string
+        styleNotes:
+          type: string
+        price:
+          type: number
+        qty:
+          type: integer
+        status:
+          $ref: '#/components/schemas/OrderItemStatus'
+        measurementSnapshot:
+          type: object
+          additionalProperties:
+            type: number
+          description: FieldName -> value snapshot from order creation time
+        stageProgress:
+          type: array
+          items:
+            type: object
+            properties:
+              stage:
+                $ref: '#/components/schemas/ProductionStage'
+              karigarName:
+                type: string
+              status:
+                type: string
+                enum: [Pending, InProgress, Done]
+              startedAt:
+                type: string
+                format: date-time
+              completedAt:
+                type: string
+                format: date-time
+
+    OrderPaymentDetailViewModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        note:
+          type: string
+        paidAt:
+          type: string
+          format: date-time
+
+    OrderAlterationViewModel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderItemId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        additionalCharge:
+          type: number
+        deliveryDate:
+          type: string
+          format: date-time
+        createdOn:
+          type: string
+          format: date-time
+
+    # ── Finance ────────────────────────────────────────────────────────────
+
+    CreateShopExpenseViewModel:
+      type: object
+      required: [category, description, amount]
+      properties:
+        category:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+        expenseDate:
+          type: string
+          format: date
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        receiptRef:
+          type: string
+
+    UpdateShopExpenseViewModel:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        category:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+        expenseDate:
+          type: string
+          format: date
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        receiptRef:
+          type: string
+
+    RecordStaffSalaryViewModel:
+      type: object
+      required: [staffUserId, month, year, baseSalary]
+      properties:
+        staffUserId:
+          type: string
+          format: uuid
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+        year:
+          type: integer
+        baseSalary:
+          type: number
+        bonus:
+          type: number
+          default: 0
+        deduction:
+          type: number
+          default: 0
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethod'
+        notes:
+          type: string
+
+    RecordAttendanceViewModel:
+      type: object
+      required: [staffUserId, date]
+      properties:
+        staffUserId:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/AttendanceStatus'
+        checkIn:
+          type: string
+          example: "09:00:00"
+        checkOut:
+          type: string
+          example: "18:00:00"
+        notes:
+          type: string
+
+    FinanceSummaryViewModel:
+      type: object
+      properties:
+        totalRevenue:
+          type: number
+        totalCollected:
+          type: number
+        totalBalanceDue:
+          type: number
+        totalExpenses:
+          type: number
+        totalSalaries:
+          type: number
+        netProfit:
+          type: number
+        totalOrders:
+          type: integer
+        pendingOrders:
+          type: integer
+        expenseBreakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+              amount:
+                type: number
+              count:
+                type: integer
+
+    # ── Karigar ────────────────────────────────────────────────────────────
+
+    KarigarStageTaskViewModel:
+      type: object
+      properties:
+        orderItemId:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        orderNumber:
+          type: string
+        customerName:
+          type: string
+        customerPhone:
+          type: string
+        garmentType:
+          $ref: '#/components/schemas/GarmentType'
+        stage:
+          $ref: '#/components/schemas/ProductionStage'
+        orderDeliveryDate:
+          type: string
+          format: date-time
+        isUrgent:
+          type: boolean
+          description: True if delivery is today or tomorrow
+        stagePrice:
+          type: number
+        estimatedDays:
+          type: integer
+        styleNotes:
+          type: string
+        fabricColor:
+          type: string
+        assignedOn:
+          type: string
+          format: date-time
+
+    # ── Response Envelopes ─────────────────────────────────────────────────
+
+    ApiResponseAuthToken:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/AuthTokenResponse'
+        errors:
+          type: array
+          items:
+            type: string
+
+    ApiResponseProvisionOwnerResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/ProvisionOwnerResult'
+        errors:
+          type: array
+          items:
+            type: string
+
+    ApiResponseProvisionShopResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/ProvisionShopResult'
+        errors:
+          type: array
+          items:
+            type: string
+
+    ApiResponsePagedUserList:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserListViewModel'
+            total:
+              type: integer
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            totalPages:
+              type: integer
+
+    ApiResponseUserDetail:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/UserDetailViewModel'
+        errors:
+          type: array
+          items:
+            type: string
+
+    ApiResponsePagedShopList:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/ShopListViewModel'
+            total:
+              type: integer
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            totalPages:
+              type: integer
+
+    ApiResponseShopDetail:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/ShopDetailViewModel'
+
+    ApiResponsePagedCustomerList:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/CustomerListViewModel'
+            total:
+              type: integer
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            totalPages:
+              type: integer
+
+    ApiResponseCustomerDetail:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/CustomerDetailViewModel'
+
+    ApiResponseCustomerLedger:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/CustomerLedgerViewModel'
+
+    ApiResponsePagedOrderList:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/OrderListViewModel'
+            total:
+              type: integer
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            totalPages:
+              type: integer
+
+    ApiResponseOrderDetail:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/OrderDetailViewModel'
+
+    ApiResponseKarigarQueue:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            karigarId:
+              type: string
+              format: uuid
+            karigarName:
+              type: string
+            totalPending:
+              type: integer
+            totalInProgress:
+              type: integer
+            totalCompletedToday:
+              type: integer
+            pendingTasks:
+              type: array
+              items:
+                $ref: '#/components/schemas/KarigarStageTaskViewModel'
+            inProgressTasks:
+              type: array
+              items:
+                $ref: '#/components/schemas/KarigarStageTaskViewModel'
+
+    ApiResponseFinanceSummary:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/FinanceSummaryViewModel'
