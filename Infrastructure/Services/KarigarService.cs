@@ -162,4 +162,63 @@ public class KarigarService : IKarigarService
 
         return ApiResponse<List<KarigarPerformanceSummaryViewModel>>.Ok(result);
     }
+
+    public async Task<ApiResponse<KarigarCompletedHistoryViewModel>> GetMyCompletedAsync(
+        DateTime? from, DateTime? to, CancellationToken ct = default)
+    {
+        var karigarId = _currentUser.UserId;
+
+        var karigar = await _db.AppUsers.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == karigarId, ct);
+
+        // Base query: only logs for this karigar that are fully completed
+        var logsQuery = _db.OrderItemStageLogs
+            .AsNoTracking()
+            .Include(l => l.OrderItem)
+                .ThenInclude(i => i.Order)
+                    .ThenInclude(o => o.Customer)
+            .Include(l => l.OrderItem)
+                .ThenInclude(i => i.StageAssignments)
+            .Where(l => l.KarigarId == karigarId && l.CompletedAt.HasValue);
+
+        if (from.HasValue)
+            logsQuery = logsQuery.Where(l => l.CompletedAt!.Value >= from.Value);
+        if (to.HasValue)
+            logsQuery = logsQuery.Where(l => l.CompletedAt!.Value <= to.Value.AddDays(1));
+
+        var logs = await logsQuery
+            .OrderByDescending(l => l.CompletedAt)
+            .ToListAsync(ct);
+
+        var completedStages = logs.Select(l =>
+        {
+            // Find the matching stage assignment to get the agreed price
+            var assignment = l.OrderItem.StageAssignments
+                .FirstOrDefault(a => a.Stage == l.Stage && a.AssignedKarigarId == karigarId);
+
+            return new KarigarCompletedStageViewModel
+            {
+                OrderItemId  = l.OrderItemId,
+                OrderId      = l.OrderItem.OrderId,
+                OrderNumber  = l.OrderItem.Order?.OrderNumber ?? string.Empty,
+                CustomerName = l.OrderItem.Order?.Customer?.Name ?? string.Empty,
+                GarmentType  = l.OrderItem.GarmentType,
+                Stage        = l.Stage,
+                StagePrice   = assignment?.StagePrice,
+                StartedAt    = l.CreatedOn,
+                CompletedAt  = l.CompletedAt!.Value
+            };
+        }).ToList();
+
+        var vm = new KarigarCompletedHistoryViewModel
+        {
+            KarigarId      = karigarId,
+            KarigarName    = karigar?.Name ?? string.Empty,
+            TotalCompleted = completedStages.Count,
+            TotalEarnings  = completedStages.Sum(s => s.StagePrice ?? 0),
+            CompletedStages = completedStages
+        };
+
+        return ApiResponse<KarigarCompletedHistoryViewModel>.Ok(vm);
+    }
 }

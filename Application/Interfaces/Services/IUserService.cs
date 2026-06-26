@@ -12,4 +12,6 @@ public interface IUserService
     Task<ApiResponse<object>> DeactivateAsync(Guid id, CancellationToken ct = default);
     Task<ApiResponse<object>> AssignShopsAsync(Guid id, List<Guid> shopIds, CancellationToken ct = default);
     Task<ApiResponse<object>> AssignRolesAsync(Guid id, List<Guid> roleIds, CancellationToken ct = default);
+    /// <summary>Soft-deletes a user account: marks IsDeleted, locks Identity login, revokes all roles. Owner-only.</summary>
+    Task<ApiResponse<object>> DeleteAsync(Guid id, CancellationToken ct = default);
 }

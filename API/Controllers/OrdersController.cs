@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.Interfaces.Services;
 using Application.ViewModels.Order;
 using Domain.Enums;
@@ -19,6 +20,7 @@ public class OrdersController : BaseController
         => ReturnProcessedResponse(await _service.SearchAsync(filter, ct));
 
     [HttpGet("{id}")]
+    [Authorize(Roles = $"{AppRoles.Owner},{AppRoles.Manager},{AppRoles.Karigar},{AppRoles.Receptionist}")]
     public async Task<IActionResult> GetDetail(Guid id, CancellationToken ct)
         => ReturnProcessedResponse(await _service.GetDetailAsync(id, ct));
 
@@ -48,7 +50,7 @@ public class OrdersController : BaseController
         => ReturnProcessedResponse(await _service.UpdateAsync(vm, ct));
 
     [HttpPatch("{id}/status")]
-    [Authorize(Roles = "Owner,Manager")]
+    [Authorize(Roles = $"{AppRoles.Owner},{AppRoles.Manager}")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] OrderStatus status, CancellationToken ct)
         => ReturnProcessedResponse(await _service.UpdateStatusAsync(id, status, ct));
 
@@ -61,27 +63,27 @@ public class OrdersController : BaseController
         => ReturnProcessedResponse(await _service.AddAlterationAsync(vm, ct));
 
     [HttpPost("stages/log")]
-    [Authorize(Roles = "Owner,Manager,Karigar")]
+    [Authorize(Roles = $"{AppRoles.Owner},{AppRoles.Manager},{AppRoles.Karigar}")]
     public async Task<IActionResult> RecordStageLog([FromBody] RecordStageLogViewModel vm, CancellationToken ct)
         => ReturnProcessedResponse(await _service.RecordStageLogAsync(vm, ct));
 
     [HttpPost("stages/complete")]
-    [Authorize(Roles = "Owner,Manager,Karigar")]
+    [Authorize(Roles = $"{AppRoles.Owner},{AppRoles.Manager},{AppRoles.Karigar}")]
     public async Task<IActionResult> CompleteStage([FromBody] CompleteStageViewModel vm, CancellationToken ct)
         => ReturnProcessedResponse(await _service.CompleteStageAsync(vm, ct));
 
     [HttpPost("stages/assign")]
-    [Authorize(Roles = "Owner,Manager")]
+    [Authorize(Roles = $"{AppRoles.Owner},{AppRoles.Manager}")]
     public async Task<IActionResult> AssignStage([FromBody] AssignStageViewModel vm, CancellationToken ct)
         => ReturnProcessedResponse(await _service.AssignStageAsync(vm, ct));
 
     [HttpPost("{id}/cancel")]
-    [Authorize(Roles = "Owner,Manager")]
+    [Authorize(Roles = $"{AppRoles.Owner},{AppRoles.Manager}")]
     public async Task<IActionResult> Cancel(Guid id, CancellationToken ct)
         => ReturnProcessedResponse(await _service.CancelOrderAsync(id, ct));
 
     [HttpPost("{id}/deliver")]
-    [Authorize(Roles = "Owner,Manager,Receptionist")]
+    [Authorize(Roles = $"{AppRoles.Owner},{AppRoles.Manager},{AppRoles.Receptionist}")]
     public async Task<IActionResult> MarkDelivered(Guid id, CancellationToken ct)
         => ReturnProcessedResponse(await _service.MarkDeliveredAsync(id, ct));
 }

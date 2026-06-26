@@ -150,6 +150,13 @@ public class OrderRepository : BaseRepository<Order>, IOrderRepository
             .Include(i => i.StageAssignments)
             .FirstOrDefaultAsync(i => i.Id == itemId, ct);
 
+    public async Task<Guid?> GetItemOrderIdAsync(Guid itemId, CancellationToken ct = default)
+        => await _db.OrderItems
+            .AsNoTracking()
+            .Where(i => i.Id == itemId)
+            .Select(i => (Guid?)i.OrderId)
+            .FirstOrDefaultAsync(ct);
+
     // ── Private helpers ─────────────────────────────────────────────────────
     private static OrderListViewModel MapToListVm(Order o) => new()
     {

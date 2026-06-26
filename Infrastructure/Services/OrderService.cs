@@ -247,7 +247,9 @@ public class OrderService : IOrderService
             Note          = vm.Note,
             PaidAt        = vm.PaidAt ?? now,
             CreatedBy     = _currentUser.UserId,
-            CreatedOn     = now
+            CreatedOn     = now,
+            UpdatedBy     = _currentUser.UserId,
+            UpdatedOn     = now
         });
 
         order.AmountPaid += vm.Amount;
@@ -262,10 +264,14 @@ public class OrderService : IOrderService
 
     public async Task<ApiResponse<object>> AddAlterationAsync(CreateOrderAlterationViewModel vm, CancellationToken ct = default)
     {
-        var item = await _repo.GetItemByIdAsync(vm.OrderItemId, ct);
-        if (item == null) return ApiResponse<object>.Fail("Order item not found.");
+        // Use a no-tracking projection to get the OrderId without loading the item entity
+        // into the change tracker — avoids a duplicate-tracking conflict when GetByIdAsync
+        // later loads the same OrderItem as part of order.Items.
+        var orderId = await _repo.GetItemOrderIdAsync(vm.OrderItemId, ct);
+        if (orderId == null) return ApiResponse<object>.Fail("Order item not found.");
 
-        var order = await _repo.GetByIdAsync(item.OrderId, ct);
+        // Load the full order aggregate (Items, Payments, Alterations) as one tracked graph.
+        var order = await _repo.GetByIdAsync(orderId.Value, ct);
         if (order == null) return ApiResponse<object>.Fail("Order not found.");
 
         var now = DateTime.UtcNow;
@@ -280,7 +286,9 @@ public class OrderService : IOrderService
             AdditionalCharge = vm.AdditionalCharge,
             DeliveryDate     = vm.DeliveryDate,
             CreatedBy        = _currentUser.UserId,
-            CreatedOn        = now
+            CreatedOn        = now,
+            UpdatedBy        = _currentUser.UserId,
+            UpdatedOn        = now
         });
 
         if (vm.AdditionalCharge > 0)
@@ -311,7 +319,9 @@ public class OrderService : IOrderService
             KarigarId   = vm.KarigarId,
             Notes       = vm.Notes,
             CreatedBy   = _currentUser.UserId,
-            CreatedOn   = now
+            CreatedOn   = now,
+            UpdatedBy   = _currentUser.UserId,
+            UpdatedOn   = now
         });
 
         item.Status = OrderItemStatus.InProgress;
@@ -364,7 +374,9 @@ public class OrderService : IOrderService
                 StagePrice        = vm.StagePrice,
                 EstimatedDays     = vm.EstimatedDays,
                 CreatedBy         = _currentUser.UserId,
-                CreatedOn         = now
+                CreatedOn         = now,
+                UpdatedBy         = _currentUser.UserId,
+                UpdatedOn         = now
             });
         }
 

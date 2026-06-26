@@ -229,6 +229,44 @@ public class UserService : IUserService
         return ApiResponse<object>.Ok((object?)null, "User deactivated.");
     }
 
+    public async Task<ApiResponse<object>> DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        // Prevent self-deletion.
+        if (id == _currentUser.UserId)
+            return ApiResponse<object>.Fail("You cannot delete your own account.");
+
+        var user = await _db.AppUsers.FirstOrDefaultAsync(u => u.Id == id, ct);
+        if (user == null) return ApiResponse<object>.Fail("User not found.");
+
+        // Guard: Owner and SystemAdmin accounts cannot be deleted from this endpoint.
+        // They must be managed exclusively via /api/admin/.
+        if (user.AuthId.HasValue)
+        {
+            var aspUser = await _userManager.FindByIdAsync(user.AuthId.Value.ToString());
+            if (aspUser != null)
+            {
+                var roles = await _userManager.GetRolesAsync(aspUser);
+                var restricted = new[] { AppRoles.SystemAdmin, AppRoles.Owner };
+                if (roles.Any(r => restricted.Contains(r)))
+                    return ApiResponse<object>.Fail(
+                        "Owner and SystemAdmin accounts cannot be deleted here. Use admin provisioning.");
+
+                // Revoke all Identity roles and lock the login.
+                await _userManager.RemoveFromRolesAsync(aspUser, roles);
+                await _userManager.SetLockoutEnabledAsync(aspUser, true);
+                await _userManager.SetLockoutEndDateAsync(aspUser, DateTimeOffset.MaxValue);
+            }
+        }
+
+        // Soft-delete the domain user record.
+        user.IsDeleted    = true;
+        user.ActiveStatus = ActiveStatus.Inactive;
+        user.UpdatedBy    = _currentUser.UserId;
+        user.UpdatedOn    = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        return ApiResponse<object>.Ok((object?)null, "User account deleted.");
+    }
     public async Task<ApiResponse<object>> AssignShopsAsync(Guid id, List<Guid> shopIds, CancellationToken ct = default)
     {
         var user = await _db.AppUsers.FirstOrDefaultAsync(u => u.Id == id, ct);

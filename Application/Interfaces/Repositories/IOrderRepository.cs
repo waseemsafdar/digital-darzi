@@ -14,5 +14,7 @@ public interface IOrderRepository : IBaseRepository<Order>
     Task<List<OrderListViewModel>> GetOverdueAsync(CancellationToken ct = default);
     Task UpdateStatusAsync(Guid id, OrderStatus status, CancellationToken ct = default);
     Task<OrderItem?> GetItemByIdAsync(Guid itemId, CancellationToken ct = default);
+    /// <summary>Lightweight lookup — returns the OrderId for the given item without loading the full tracked graph.</summary>
+    Task<Guid?> GetItemOrderIdAsync(Guid itemId, CancellationToken ct = default);
 }
 

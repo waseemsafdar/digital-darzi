@@ -5,7 +5,9 @@ namespace Application.Common;
 /// </summary>
 public static class AppRoles
 {
-    public const string SystemAdmin = "SystemAdmin";
-    public const string Owner       = "Owner";
-    public const string Manager     = "Manager";
+    public const string SystemAdmin  = "SystemAdmin";
+    public const string Owner        = "Owner";
+    public const string Manager      = "Manager";
+    public const string Karigar      = "Karigar";
+    public const string Receptionist = "Receptionist";
 }

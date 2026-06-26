@@ -54,4 +54,9 @@ public class UsersController : BaseController
     [Authorize(Roles = AppRoles.Owner)]
     public async Task<IActionResult> AssignRoles(Guid id, [FromBody] List<Guid> roleIds, CancellationToken ct)
         => ReturnProcessedResponse(await _service.AssignRolesAsync(id, roleIds, ct));
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = AppRoles.Owner)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+        => ReturnProcessedResponse(await _service.DeleteAsync(id, ct));
 }

@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,13 +20,21 @@ public class KarigarController : BaseController
 
     /// <summary>Returns work queue for a specific karigar (Owner/Manager only).</summary>
     [HttpGet("{karigarId}/queue")]
-    [Authorize(Roles = "SystemAdmin,Owner,Manager")]
+    [Authorize(Roles = $"{AppRoles.SystemAdmin},{AppRoles.Owner},{AppRoles.Manager}")]
     public async Task<IActionResult> GetKarigarQueue(Guid karigarId, CancellationToken ct)
         => ReturnProcessedResponse(await _service.GetKarigarWorkQueueAsync(karigarId, ct));
 
     /// <summary>Returns performance summary for all karigars (Owner/Manager only).</summary>
     [HttpGet("performance")]
-    [Authorize(Roles = "SystemAdmin,Owner,Manager")]
+    [Authorize(Roles = $"{AppRoles.SystemAdmin},{AppRoles.Owner},{AppRoles.Manager}")]
     public async Task<IActionResult> GetPerformanceSummary(CancellationToken ct)
         => ReturnProcessedResponse(await _service.GetAllKarigarsSummaryAsync(ct));
+
+    /// <summary>Returns the logged-in karigar's completed-stage history with earnings.</summary>
+    [HttpGet("my-completed")]
+    public async Task<IActionResult> GetMyCompleted(
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        CancellationToken ct)
+        => ReturnProcessedResponse(await _service.GetMyCompletedAsync(from, to, ct));
 }

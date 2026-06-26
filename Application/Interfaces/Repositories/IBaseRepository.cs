@@ -19,4 +19,6 @@ public interface IBaseRepository<TEntity> where TEntity : BaseDBModel
     Task UpdateAsync(TEntity entity, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
+    /// <summary>Detaches the entity from the change tracker to prevent duplicate-key tracking conflicts.</summary>
+    void Detach(TEntity entity);
 }

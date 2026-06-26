@@ -94,7 +94,9 @@ public class CustomerRepository : BaseRepository<Customer>, ICustomerRepository
     // Override soft delete to also mark ActiveStatus
     public override async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var c = await GetByIdAsync(id, ct);
+        // Must use FindAsync (tracked) — GetByIdAsync uses AsNoTracking and
+        // EF would silently discard the mutation on a detached entity.
+        var c = await _dbSet.FindAsync(new object[] { id }, ct);
         if (c == null) return;
         c.IsDeleted = true;
         c.ActiveStatus = ActiveStatus.Inactive;

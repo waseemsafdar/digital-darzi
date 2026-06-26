@@ -54,3 +54,28 @@ public class StageBreakdownViewModel
     public int Count { get; set; }
     public decimal Earnings { get; set; }
 }
+
+// ── Karigar Completed History ─────────────────────────────────────────────
+public class KarigarCompletedHistoryViewModel
+{
+    public Guid KarigarId { get; set; }
+    public string KarigarName { get; set; } = string.Empty;
+    public int TotalCompleted { get; set; }
+    public decimal TotalEarnings { get; set; }
+    public List<KarigarCompletedStageViewModel> CompletedStages { get; set; } = new();
+}
+
+public class KarigarCompletedStageViewModel
+{
+    public Guid OrderItemId { get; set; }
+    public Guid OrderId { get; set; }
+    public string OrderNumber { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public GarmentType GarmentType { get; set; }
+    public ProductionStage Stage { get; set; }
+    public decimal? StagePrice { get; set; }
+    public DateTime StartedAt { get; set; }
+    public DateTime CompletedAt { get; set; }
+    /// <summary>Duration in minutes.</summary>
+    public double DurationMinutes => (CompletedAt - StartedAt).TotalMinutes;
+}

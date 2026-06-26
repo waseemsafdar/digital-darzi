@@ -208,3 +208,22 @@ public class ExpenseByCategoryViewModel
     public decimal Amount { get; set; }
     public int Count { get; set; }
 }
+
+// ── Staff Self-Service Attendance ──────────────────────────────────────────
+/// <summary>Used by staff (any role) to self-record their own check-in/check-out.</summary>
+public class StaffCheckInViewModel
+{
+    /// <summary>Leave null to check in; provide a time to update check-out.</summary>
+    public TimeSpan? CheckOut { get; set; }
+    public string? Notes { get; set; }
+}
+
+/// <summary>Filter for a staff member viewing their own attendance history.</summary>
+public class MyAttendanceFilter
+{
+    public DateTime? From { get; set; }
+    public DateTime? To { get; set; }
+    /// <summary>Defaults to current month if neither From nor To supplied.</summary>
+    public int? Month { get; set; }
+    public int? Year { get; set; }
+}

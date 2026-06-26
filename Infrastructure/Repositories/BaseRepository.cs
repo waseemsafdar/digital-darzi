@@ -93,4 +93,7 @@ public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : 
 
     public virtual async Task SaveChangesAsync(CancellationToken ct = default)
         => await _db.SaveChangesAsync(ct);
+
+    public void Detach(TEntity entity)
+        => _db.Entry(entity).State = EntityState.Detached;
 }

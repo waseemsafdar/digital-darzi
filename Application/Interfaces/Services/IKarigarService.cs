@@ -13,4 +13,8 @@ public interface IKarigarService
 
     /// <summary>Summary: how many stages assigned, done, pending per karigar.</summary>
     Task<ApiResponse<List<KarigarPerformanceSummaryViewModel>>> GetAllKarigarsSummaryAsync(CancellationToken ct = default);
+
+    /// <summary>Returns the logged-in karigar's own completed-stage history with earnings, filtered by optional date range.</summary>
+    Task<ApiResponse<KarigarCompletedHistoryViewModel>> GetMyCompletedAsync(DateTime? from, DateTime? to, CancellationToken ct = default);
 }
+
