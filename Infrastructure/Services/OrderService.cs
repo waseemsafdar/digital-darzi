@@ -245,7 +245,7 @@ public class OrderService : IOrderService
             Amount        = vm.Amount,
             PaymentMethod = vm.PaymentMethod,
             Note          = vm.Note,
-            PaidAt        = vm.PaidAt ?? now,
+            PaidAt        = now,
             CreatedBy     = _currentUser.UserId,
             CreatedOn     = now,
             UpdatedBy     = _currentUser.UserId,
@@ -352,6 +352,11 @@ public class OrderService : IOrderService
     {
         var item = await _repo.GetItemByIdAsync(vm.OrderItemId, ct);
         if (item == null) return ApiResponse<object>.Fail("Order item not found.");
+
+        // Validate the karigar exists in this tenant — otherwise the insert hits a
+        // foreign-key violation and surfaces as an opaque 500.
+        if (vm.AssignedKarigarId == Guid.Empty || !await _repo.UserExistsAsync(vm.AssignedKarigarId, ct))
+            return ApiResponse<object>.Fail("Assigned karigar not found.");
 
         var existing = item.StageAssignments.FirstOrDefault(a => a.Stage == vm.Stage);
         if (existing != null)

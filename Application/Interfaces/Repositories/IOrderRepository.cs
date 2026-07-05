@@ -16,5 +16,7 @@ public interface IOrderRepository : IBaseRepository<Order>
     Task<OrderItem?> GetItemByIdAsync(Guid itemId, CancellationToken ct = default);
     /// <summary>Lightweight lookup — returns the OrderId for the given item without loading the full tracked graph.</summary>
     Task<Guid?> GetItemOrderIdAsync(Guid itemId, CancellationToken ct = default);
+    /// <summary>Returns true if an active (non-deleted) user exists with the given id in the current tenant/branch scope.</summary>
+    Task<bool> UserExistsAsync(Guid userId, CancellationToken ct = default);
 }
 

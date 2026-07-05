@@ -5,6 +5,7 @@ namespace Application.Interfaces.Services;
 
 public interface IUserService
 {
+    Task<ApiResponse<List<RoleViewModel>>> GetRolesAsync(CancellationToken ct = default);
     Task<ApiResponse<PagedResult<UserListViewModel>>> GetListAsync(Guid? shopId, int page, int pageSize, CancellationToken ct = default);
     Task<ApiResponse<UserDetailViewModel>> GetDetailAsync(Guid id, CancellationToken ct = default);
     Task<ApiResponse<UserDetailViewModel>> CreateAsync(CreateUserViewModel vm, CancellationToken ct = default);

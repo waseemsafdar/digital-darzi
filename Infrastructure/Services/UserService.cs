@@ -25,6 +25,18 @@ public class UserService : IUserService
         _currentUser = currentUser;
     }
 
+    public async Task<ApiResponse<List<RoleViewModel>>> GetRolesAsync(CancellationToken ct = default)
+    {
+        var roles = await _db.Roles
+            .AsNoTracking()
+            .Where(r => r.Name != AppRoles.SystemAdmin)   // hide infrastructure role
+            .OrderBy(r => r.Name)
+            .Select(r => new RoleViewModel { Id = r.Id, Name = r.Name! })
+            .ToListAsync(ct);
+
+        return ApiResponse<List<RoleViewModel>>.Ok(roles);
+    }
+
     public async Task<ApiResponse<PagedResult<UserListViewModel>>> GetListAsync(Guid? shopId, int page, int pageSize, CancellationToken ct = default)
     {
         var query = _db.AppUsers.AsNoTracking().AsQueryable();

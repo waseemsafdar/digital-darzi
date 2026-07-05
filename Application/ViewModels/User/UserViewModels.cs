@@ -3,6 +3,13 @@ using Domain.Enums;
 
 namespace Application.ViewModels.User;
 
+// ── Role ──────────────────────────────────────────────────────────────────────
+public class RoleViewModel
+{
+    public Guid   Id   { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
 public class UserListViewModel
 {
     public Guid Id { get; set; }

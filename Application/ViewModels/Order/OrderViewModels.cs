@@ -56,7 +56,6 @@ public class RecordOrderPaymentViewModel
     public decimal Amount { get; set; }
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
     public string? Note { get; set; }
-    public DateTime? PaidAt { get; set; }
 }
 
 // ── Alteration ────────────────────────────────────────────────────────────

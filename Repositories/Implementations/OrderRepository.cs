@@ -157,6 +157,10 @@ public class OrderRepository : BaseRepository<Order>, IOrderRepository
             .Select(i => (Guid?)i.OrderId)
             .FirstOrDefaultAsync(ct);
 
+    // User query filter already scopes to the current tenant and excludes soft-deleted rows.
+    public async Task<bool> UserExistsAsync(Guid userId, CancellationToken ct = default)
+        => await _db.AppUsers.AsNoTracking().AnyAsync(u => u.Id == userId, ct);
+
     // ── Private helpers ─────────────────────────────────────────────────────
     private static OrderListViewModel MapToListVm(Order o) => new()
     {
