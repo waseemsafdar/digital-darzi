@@ -61,6 +61,7 @@ public class CustomerService<TCreate, TUpdate, TDetail>
         var entity = _mapper.Map<Customer>(vm);
         entity.TenantId    = _currentUser.TenantId;
         entity.BranchId    = _currentUser.ShopId;
+        entity.ShopId      = _currentUser.ShopId;
         entity.ActiveStatus= ActiveStatus.Active;
         entity.CreatedBy   = _currentUser.UserId;
         entity.CreatedOn   = DateTime.UtcNow;

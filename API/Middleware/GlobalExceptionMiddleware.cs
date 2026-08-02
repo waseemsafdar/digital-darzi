@@ -69,7 +69,8 @@ public class GlobalExceptionMiddleware
         if (detail.Contains("duplicate key", StringComparison.OrdinalIgnoreCase)
             || detail.Contains("unique", StringComparison.OrdinalIgnoreCase))
             return "This record already exists.";
-        return "The operation could not be saved due to a data conflict.";
+        // Surface the underlying database reason so the failure is diagnosable.
+        return $"The operation could not be saved: {detail}";
     }
 }
 

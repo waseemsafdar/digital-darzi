@@ -112,7 +112,11 @@ public class MeasurementRepository : IMeasurementRepository
 
     public async Task UpdateTemplateAsync(MeasurementTemplate template, CancellationToken ct = default)
     {
-        _db.MeasurementTemplates.Update(template);
+        // template is loaded tracked (with TemplateFields) by the service, which Clear()s and
+        // re-adds child fields. Let the change tracker handle those as deletes/inserts — calling
+        // Update() here would force the client-keyed new fields to Modified (UPDATE → 0 rows).
+        if (_db.Entry(template).State == EntityState.Detached)
+            _db.MeasurementTemplates.Update(template);
         await _db.SaveChangesAsync(ct);
     }
 

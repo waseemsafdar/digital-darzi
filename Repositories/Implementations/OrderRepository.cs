@@ -144,6 +144,18 @@ public class OrderRepository : BaseRepository<Order>, IOrderRepository
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task AddPaymentAsync(OrderPayment payment, CancellationToken ct = default)
+    {
+        _db.OrderPayments.Add(payment);          // tracked as Added → INSERT
+        await _db.SaveChangesAsync(ct);          // also flushes tracked order scalar changes, atomically
+    }
+
+    public async Task AddAlterationAsync(OrderAlteration alteration, CancellationToken ct = default)
+    {
+        _db.OrderAlterations.Add(alteration);    // tracked as Added → INSERT
+        await _db.SaveChangesAsync(ct);          // also flushes tracked order scalar changes, atomically
+    }
+
     public async Task<OrderItem?> GetItemByIdAsync(Guid itemId, CancellationToken ct = default)
         => await _db.OrderItems
             .Include(i => i.StageLogs)

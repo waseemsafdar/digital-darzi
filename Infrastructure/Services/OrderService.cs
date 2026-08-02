@@ -68,6 +68,7 @@ public class OrderService : IOrderService
                 Id                  = Guid.NewGuid(),
                 TenantId            = _currentUser.TenantId,
                 BranchId            = _currentUser.ShopId,
+                ShopId              = _currentUser.ShopId,
                 CustomerId          = vm.CustomerId,
                 OrderNumber         = GenerateOrderNumber(),
                 DeliveryDate        = vm.DeliveryDate,
@@ -236,7 +237,11 @@ public class OrderService : IOrderService
         if (vm.Amount > order.BalanceDue) return ApiResponse<object>.Fail($"Amount exceeds balance due ({order.BalanceDue:N2}).");
 
         var now = DateTime.UtcNow;
-        order.Payments.Add(new OrderPayment
+
+        // Build the payment as a standalone row. Adding it to order.Payments and calling
+        // UpdateAsync(order) re-attaches the whole graph — EF then treats the client-keyed
+        // payment as Modified (UPDATE → 0 rows affected) instead of inserting it.
+        var payment = new OrderPayment
         {
             Id            = Guid.NewGuid(),
             TenantId      = _currentUser.TenantId,
@@ -250,16 +255,26 @@ public class OrderService : IOrderService
             CreatedOn     = now,
             UpdatedBy     = _currentUser.UserId,
             UpdatedOn     = now
-        });
+        };
 
+        // Mutate the tracked order's scalars; these flush in the same SaveChanges as the insert.
         order.AmountPaid += vm.Amount;
         order.BalanceDue -= vm.Amount;
         if (order.BalanceDue <= 0) order.Status = OrderStatus.FullyPaid;
         order.UpdatedBy = _currentUser.UserId;
         order.UpdatedOn = now;
 
-        await _repo.UpdateAsync(order, ct);
-        return ApiResponse<object>.Ok((object?)null, "Payment recorded.");
+        try
+        {
+            await _repo.AddPaymentAsync(payment, ct);   // INSERT payment + UPDATE order, atomically
+            return ApiResponse<object>.Ok((object?)null, "Payment recorded.");
+        }
+        catch (Exception ex)
+        {
+            // Surface the underlying database reason so the failure is diagnosable.
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return ApiResponse<object>.Fail($"Failed to record payment: {detail}");
+        }
     }
 
     public async Task<ApiResponse<object>> AddAlterationAsync(CreateOrderAlterationViewModel vm, CancellationToken ct = default)
@@ -275,7 +290,10 @@ public class OrderService : IOrderService
         if (order == null) return ApiResponse<object>.Fail("Order not found.");
 
         var now = DateTime.UtcNow;
-        order.Alterations.Add(new OrderAlteration
+
+        // Insert the alteration as its own row (see AddPaymentAsync — adding to order.Alterations
+        // and Update()'ing the order marks the client-keyed row as Modified → UPDATE 0 rows).
+        var alteration = new OrderAlteration
         {
             Id               = Guid.NewGuid(),
             TenantId         = _currentUser.TenantId,
@@ -289,7 +307,7 @@ public class OrderService : IOrderService
             CreatedOn        = now,
             UpdatedBy        = _currentUser.UserId,
             UpdatedOn        = now
-        });
+        };
 
         if (vm.AdditionalCharge > 0)
         {
@@ -299,8 +317,16 @@ public class OrderService : IOrderService
         order.UpdatedBy = _currentUser.UserId;
         order.UpdatedOn = now;
 
-        await _repo.UpdateAsync(order, ct);
-        return ApiResponse<object>.Ok((object?)null, "Alteration added.");
+        try
+        {
+            await _repo.AddAlterationAsync(alteration, ct);   // INSERT alteration + UPDATE order, atomically
+            return ApiResponse<object>.Ok((object?)null, "Alteration added.");
+        }
+        catch (Exception ex)
+        {
+            var detail = ex.InnerException?.Message ?? ex.Message;
+            return ApiResponse<object>.Fail($"Failed to add alteration: {detail}");
+        }
     }
 
     public async Task<ApiResponse<object>> RecordStageLogAsync(RecordStageLogViewModel vm, CancellationToken ct = default)

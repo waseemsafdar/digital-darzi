@@ -28,6 +28,15 @@ public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : 
         return _dbSet.AsNoTracking().Where(x => !x.IsDeleted);
     }
 
+    /// <summary>
+    /// Tracked base query — used by single-entity fetches (GetById) so the returned entity
+    /// can be mutated and saved. List/paged reads use <see cref="GetBaseQuery"/> (no-tracking).
+    /// </summary>
+    protected virtual IQueryable<TEntity> GetTrackedQuery()
+    {
+        return _dbSet.Where(x => !x.IsDeleted);
+    }
+
     protected virtual Task<IQueryable<TEntity>> ApplyFiltersAsync(IQueryable<TEntity> query, IBaseSearchModel search)
     {
         return Task.FromResult(query);
@@ -35,7 +44,7 @@ public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : 
 
     public virtual async Task<TEntity?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        return await GetBaseQuery().FirstOrDefaultAsync(x => x.Id == id, ct);
+        return await GetTrackedQuery().FirstOrDefaultAsync(x => x.Id == id, ct);
     }
 
     public virtual async Task<IEnumerable<TEntity>> GetAllAsync(CancellationToken ct = default)
