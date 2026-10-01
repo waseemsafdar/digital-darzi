@@ -1,36 +1,33 @@
-using Domain.Entities;
+using Application.Common;
 using Domain.Enums;
 using Microsoft.AspNetCore.Http;
 
 namespace Application.Interfaces.Services;
 
+public class AttachmentViewModel
+{
+    public Guid Id { get; set; }
+    public AttachmentType AttachmentType { get; set; }
+    public Guid EntityId { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public long SizeBytes { get; set; }
+    public string? Description { get; set; }
+    /// <summary>Authorised download URL (requires the bearer token).</summary>
+    public string Url { get; set; } = string.Empty;
+    public DateTime CreatedOn { get; set; }
+}
+
+public sealed record AttachmentFile(Stream Content, string ContentType, string FileName);
+
 /// <summary>
-/// Global attachment handling – upload, retrieve, and delete files linked to any entity.
-/// Mirrors the pattern used in the pilot/global API.
+/// Files linked to an order, order item, expense or customer. Files are stored under a private
+/// key and only ever served through an authorised, tenant-filtered endpoint.
 /// </summary>
 public interface IAttachmentService
 {
-    /// <summary>
-    /// Uploads a file and creates an Attachment record.
-    /// </summary>
-    Task<Attachment> AddAsync(
-        Guid entityId,
-        AttachmentType type,
-        IFormFile file,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Returns all attachments for a given entity/type pair.
-    /// </summary>
-    Task<IReadOnlyList<Attachment>> GetByEntityAsync(
-        Guid entityId,
-        AttachmentType type,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Deletes an attachment (both DB row and stored file).
-    /// </summary>
-    Task DeleteAsync(
-        Guid attachmentId,
-        CancellationToken cancellationToken = default);
+    Task<ApiResponse<AttachmentViewModel>> UploadAsync(AttachmentType type, Guid entityId, IFormFile file, string? description, CancellationToken ct = default);
+    Task<ApiResponse<List<AttachmentViewModel>>> ListAsync(AttachmentType type, Guid entityId, CancellationToken ct = default);
+    Task<ApiResponse<object>> DeleteAsync(Guid attachmentId, CancellationToken ct = default);
+    Task<AttachmentFile?> OpenAsync(Guid attachmentId, CancellationToken ct = default);
 }

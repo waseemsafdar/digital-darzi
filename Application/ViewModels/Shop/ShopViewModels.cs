@@ -15,6 +15,8 @@ public class CreateShopViewModel : IBaseCrudViewModel
     public string? LogoUrl { get; set; }
     public string Currency { get; set; } = "PKR";
     public string CurrencySymbol { get; set; } = "₨";
+    /// <summary>IANA time zone, e.g. "Asia/Karachi". Defaults to Asia/Karachi.</summary>
+    public string? TimeZone { get; set; }
 }
 
 // ── Update ─────────────────────────────────────────────────────────────────
@@ -29,6 +31,8 @@ public class UpdateShopViewModel : IBaseCrudViewModel, IIdentification
     public string? LogoUrl { get; set; }
     public string? Currency { get; set; }
     public string? CurrencySymbol { get; set; }
+    public string? TimeZone { get; set; }
+    public bool? NotificationsEnabled { get; set; }
     public ActiveStatus? ActiveStatus { get; set; }
 }
 
@@ -57,6 +61,8 @@ public class ShopDetailViewModel : IBaseCrudViewModel
     public string? LogoUrl { get; set; }
     public string Currency { get; set; } = "PKR";
     public string CurrencySymbol { get; set; } = "₨";
+    public string TimeZone { get; set; } = "Asia/Karachi";
+    public bool NotificationsEnabled { get; set; }
     public Guid? OwnerId { get; set; }
     public string? OwnerName { get; set; }
     public ActiveStatus ActiveStatus { get; set; }
@@ -66,6 +72,7 @@ public class ShopDetailViewModel : IBaseCrudViewModel
     public DateTime? TrialEndsAt { get; set; }
     public DateTime? SubscriptionEndsAt { get; set; }
     public string? SubscriptionPlanName { get; set; }
+    public Guid? SubscriptionPlanId { get; set; }
 
     public DateTime CreatedOn { get; set; }
     public Guid? CreatedBy { get; set; }

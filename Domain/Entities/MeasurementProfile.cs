@@ -10,11 +10,12 @@ public class MeasurementProfile : BaseDBModel
     public Guid TemplateId { get; set; }
     public string? ProfileName { get; set; }         // e.g. "Suit – June 2025"
     public string? FieldValuesJson { get; set; }     // JSONB: {fieldId → decimal}
+    public string? TextValuesJson { get; set; }      // JSONB: {fieldId → string} for text-type fields
+    public int CurrentVersion { get; set; } = 1;
     public string? Notes { get; set; }
-    public new DateTime UpdatedOn { get; set; } = DateTime.UtcNow;
 
     // Navigation
     public Customer Customer { get; set; } = null!;
     public MeasurementTemplate Template { get; set; } = null!;
-    public ICollection<TemplateField> TemplateFields => Template?.TemplateFields ?? new List<TemplateField>();
+    public ICollection<MeasurementProfileVersion> Versions { get; set; } = new List<MeasurementProfileVersion>();
 }

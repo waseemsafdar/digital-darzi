@@ -4,4 +4,5 @@
   <Project Path="Domain/Domain.csproj" />
   <Project Path="Infrastructure/Infrastructure.csproj" />
   <Project Path="Repositories/Repositories.csproj" />
+  <Project Path="Tests/DigitalDarzi.UnitTests/DigitalDarzi.UnitTests.csproj" />
 </Solution>

@@ -25,17 +25,30 @@ public class AdminProvisioningService : IAdminProvisioningService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
     private readonly ITenantSetupService _tenantSetup;
+    private readonly IShopSettingsCache _shopCache;
+    private readonly TimeProvider _clock;
 
     public AdminProvisioningService(
         ApplicationDbContext db,
         UserManager<ApplicationUser> userManager,
         RoleManager<IdentityRole<Guid>> roleManager,
-        ITenantSetupService tenantSetup)
+        ITenantSetupService tenantSetup,
+        IShopSettingsCache shopCache,
+        TimeProvider clock)
     {
         _db          = db;
         _userManager = userManager;
         _roleManager = roleManager;
         _tenantSetup = tenantSetup;
+        _shopCache   = shopCache;
+        _clock       = clock;
+    }
+
+    /// <summary>Subscription changes must be seen by the 402 check straight away, not after the cache expires.</summary>
+    private void Invalidate(Shop shop)
+    {
+        _shopCache.Invalidate(shop.Id);
+        _shopCache.InvalidateTenant(shop.TenantId);
     }
 
     // ── Step 1: Provision Owner ─────────────────────────────────────────────
@@ -130,7 +143,7 @@ public class AdminProvisioningService : IAdminProvisioningService
             .FirstOrDefaultAsync(u => u.Id == req.UserId && !u.IsDeleted, ct);
 
         if (owner == null)
-            return ApiResponse<ProvisionShopResult>.Fail("Owner user not found. Provision the owner first (Step 1).");
+            return ApiResponse<ProvisionShopResult>.NotFound("Owner user not found. Provision the owner first (Step 1).");
 
         var now = DateTime.UtcNow;
 
@@ -153,9 +166,10 @@ public class AdminProvisioningService : IAdminProvisioningService
                 LogoUrl        = req.LogoUrl,
                 Currency       = req.Currency,
                 CurrencySymbol = req.CurrencySymbol,
+                TimeZone       = string.IsNullOrWhiteSpace(req.TimeZone) ? Shop.DefaultTimeZone : req.TimeZone,
                 ActiveStatus   = ActiveStatus.Active,
-                Status         = SubscriptionStatus.Trial,
-                TrialEndsAt    = now.AddDays(14),
+                Status         = owner.ShopIds.Count == 0 ? SubscriptionStatus.Trial : null,   // later branches inherit the first branch's subscription
+                TrialEndsAt    = owner.ShopIds.Count == 0 ? now.AddDays(14) : null,
                 CreatedBy      = owner.Id,
                 CreatedOn      = now,
                 UpdatedBy      = owner.Id,
@@ -202,15 +216,23 @@ public class AdminProvisioningService : IAdminProvisioningService
             .FirstOrDefaultAsync(s => s.Id == req.ShopId && !s.IsDeleted, ct);
 
         if (shop == null)
-            return ApiResponse<bool>.Fail("Shop not found.");
+            return ApiResponse<bool>.NotFound("Shop not found.");
+
+        if (req.PlanId.HasValue)
+        {
+            var plan = await _db.SubscriptionPlans.FirstOrDefaultAsync(p => p.Id == req.PlanId && p.IsActive, ct);
+            if (plan == null) return ApiResponse<bool>.NotFound("Plan not found or inactive.");
+            shop.SubscriptionPlanId = plan.Id;
+            req.PlanName ??= plan.Name;
+        }
 
         shop.Status              = req.Status;
         shop.SubscriptionEndsAt  = req.Status == SubscriptionStatus.Active ? req.SubscriptionEndsAt : null;
         shop.TrialEndsAt         = req.Status == SubscriptionStatus.Trial ? DateTime.UtcNow.AddDays(req.TrialDays) : shop.TrialEndsAt;
-        shop.SubscriptionPlanName = req.PlanName;
-        shop.UpdatedOn           = DateTime.UtcNow;
+        shop.SubscriptionPlanName = req.PlanName ?? shop.SubscriptionPlanName;
 
         await _db.SaveChangesAsync(ct);
+        Invalidate(shop);
         return ApiResponse<bool>.Ok(true, $"Subscription set to '{req.Status}' for shop '{shop.Name}'.");
     }
 
@@ -219,29 +241,32 @@ public class AdminProvisioningService : IAdminProvisioningService
     public async Task<ApiResponse<bool>> ActivateSubscriptionAsync(Guid shopId, CancellationToken ct = default)
     {
         var shop = await _db.Shops.IgnoreQueryFilters().FirstOrDefaultAsync(s => s.Id == shopId && !s.IsDeleted, ct);
-        if (shop == null) return ApiResponse<bool>.Fail("Shop not found.");
+        if (shop == null) return ApiResponse<bool>.NotFound("Shop not found.");
 
         shop.Status    = SubscriptionStatus.Active;
         shop.UpdatedOn = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
+        Invalidate(shop);
         return ApiResponse<bool>.Ok(true, "Subscription activated.");
     }
 
     public async Task<ApiResponse<bool>> SuspendSubscriptionAsync(Guid shopId, CancellationToken ct = default)
     {
         var shop = await _db.Shops.IgnoreQueryFilters().FirstOrDefaultAsync(s => s.Id == shopId && !s.IsDeleted, ct);
-        if (shop == null) return ApiResponse<bool>.Fail("Shop not found.");
+        if (shop == null) return ApiResponse<bool>.NotFound("Shop not found.");
 
         shop.Status    = SubscriptionStatus.Suspended;
         shop.UpdatedOn = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
+        Invalidate(shop);
         return ApiResponse<bool>.Ok(true, "Subscription suspended.");
     }
 
     public async Task<ApiResponse<bool>> ExtendSubscriptionAsync(Guid shopId, int days, CancellationToken ct = default)
     {
+        if (days is < 1 or > 3660) return ApiResponse<bool>.Fail("Days must be between 1 and 3660.");
         var shop = await _db.Shops.IgnoreQueryFilters().FirstOrDefaultAsync(s => s.Id == shopId && !s.IsDeleted, ct);
-        if (shop == null) return ApiResponse<bool>.Fail("Shop not found.");
+        if (shop == null) return ApiResponse<bool>.NotFound("Shop not found.");
 
         if (shop.Status == SubscriptionStatus.Trial)
             shop.TrialEndsAt = (shop.TrialEndsAt ?? DateTime.UtcNow).AddDays(days);
@@ -250,6 +275,7 @@ public class AdminProvisioningService : IAdminProvisioningService
 
         shop.UpdatedOn = DateTime.UtcNow;
         await _db.SaveChangesAsync(ct);
+        Invalidate(shop);
         return ApiResponse<bool>.Ok(true, $"Extended by {days} day(s).");
     }
 
@@ -259,7 +285,10 @@ public class AdminProvisioningService : IAdminProvisioningService
     {
         var domainUser = await _db.AppUsers.IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted, ct);
-        if (domainUser == null) return ApiResponse<bool>.Fail("User not found.");
+        if (domainUser == null) return ApiResponse<bool>.NotFound("User not found.");
+
+        if (string.Equals(newRole, AppRoles.SystemAdmin, StringComparison.OrdinalIgnoreCase))
+            return ApiResponse<bool>.Forbidden("The SystemAdmin role cannot be granted through the API.");
 
         // Ensure role exists
         if (!await _roleManager.RoleExistsAsync(newRole))
@@ -291,6 +320,7 @@ public class AdminProvisioningService : IAdminProvisioningService
 
     public async Task<ApiResponse<PagedResult<UserListViewModel>>> GetOwnersAsync(int page, int pageSize, CancellationToken ct = default)
     {
+        (page, pageSize) = Paging.Normalize(page, pageSize);
         // Find the Owner role
         var ownerRole = await _roleManager.FindByNameAsync(AppRoles.Owner);
         if (ownerRole == null)
@@ -320,6 +350,7 @@ public class AdminProvisioningService : IAdminProvisioningService
 
     public async Task<ApiResponse<PagedResult<ShopListViewModel>>> GetAllShopsAsync(int page, int pageSize, CancellationToken ct = default)
     {
+        (page, pageSize) = Paging.Normalize(page, pageSize);
         var query = _db.Shops.IgnoreQueryFilters()
             .AsNoTracking()
             .Where(s => !s.IsDeleted)

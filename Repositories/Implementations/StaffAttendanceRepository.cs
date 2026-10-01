@@ -29,10 +29,14 @@ public class StaffAttendanceRepository : BaseRepository<StaffAttendance>, IStaff
     {
         var records = await _db.StaffAttendances.AsNoTracking()
             .Include(a => a.StaffUser)
-            .Where(a => a.StaffUserId == staffId && a.Date.Month == month && a.Date.Year == year && !a.IsDeleted)
+            .Where(a => a.StaffUserId == staffId
+                && a.Date >= new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc)
+                && a.Date < new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(1))
             .ToListAsync(ct);
 
-        var staffName = records.FirstOrDefault()?.StaffUser?.Name ?? string.Empty;
+        var staffName = records.FirstOrDefault()?.StaffUser?.Name
+            ?? await _db.AppUsers.AsNoTracking().Where(u => u.Id == staffId).Select(u => u.Name).FirstOrDefaultAsync(ct)
+            ?? string.Empty;
 
         return new AttendanceSummaryViewModel
         {

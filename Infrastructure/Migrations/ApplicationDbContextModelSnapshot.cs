@@ -18,9 +18,10 @@ namespace Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.4")
+                .HasAnnotation("ProductVersion", "8.0.31")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+            NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("Domain.Entities.Attachment", b =>
@@ -41,6 +42,9 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("ClientId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ContentType")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uuid");
 
@@ -53,6 +57,9 @@ namespace Infrastructure.Migrations
                     b.Property<Guid?>("EntityId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("FileName")
+                        .HasColumnType("text");
+
                     b.Property<string>("ImageUrl")
                         .IsRequired()
                         .HasColumnType("text");
@@ -61,6 +68,117 @@ namespace Infrastructure.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StorageKey")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("TenantId", "BranchId", "AttachmentType", "EntityId");
+
+                    b.ToTable("Attachments");
+                });
+
+            modelBuilder.Entity("Domain.Entities.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NewValues")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("OldValues")
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "CreatedOn");
+
+                    b.HasIndex("TenantId", "EntityType", "EntityId");
+
+                    b.ToTable("AuditLogs");
+                });
+
+            modelBuilder.Entity("Domain.Entities.CashMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Direction")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("MovementAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SessionId")
                         .HasColumnType("uuid");
 
                     b.Property<long>("Sr")
@@ -77,9 +195,85 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OrderId");
+                    b.HasIndex("TenantId", "SessionId");
 
-                    b.ToTable("Attachment");
+                    b.ToTable("CashMovements");
+                });
+
+            modelBuilder.Entity("Domain.Entities.CashSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ClosedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("CountedCash")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("ExpectedCash")
+                        .HasColumnType("numeric");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("OpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OpenedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("OpeningFloat")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("Variance")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_CashSessions_OneOpenPerBranch")
+                        .HasFilter("\"Status\" = 1 AND \"IsDeleted\" = FALSE");
+
+                    b.ToTable("CashSessions");
                 });
 
             modelBuilder.Entity("Domain.Entities.Customer", b =>
@@ -109,6 +303,9 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("CreatedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("CustomerType")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime?>("DateOfBirth")
                         .HasColumnType("timestamp with time zone");
 
@@ -135,8 +332,17 @@ namespace Infrastructure.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("text");
 
+                    b.Property<bool>("NotificationsOptOut")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Phone")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("PreferredKarigarId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PreferredStyles")
                         .HasColumnType("text");
 
                     b.Property<Guid>("ShopId")
@@ -160,12 +366,456 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("WhatsAppNumber")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .HasDatabaseName("IX_Customers_Name_trgm");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Name"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Name"), new[] { "gin_trgm_ops" });
+
+                    b.HasIndex("Phone")
+                        .HasDatabaseName("IX_Customers_Phone_trgm");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Phone"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Phone"), new[] { "gin_trgm_ops" });
+
+                    b.HasIndex("TenantId", "BranchId", "CreatedOn");
 
                     b.HasIndex("TenantId", "ShopId", "Phone")
                         .IsUnique();
 
                     b.ToTable("Customers");
+                });
+
+            modelBuilder.Entity("Domain.Entities.ExpenseCategoryDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId", "Name")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = FALSE");
+
+                    b.ToTable("ExpenseCategories");
+                });
+
+            modelBuilder.Entity("Domain.Entities.GarmentAttribute", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("GarmentType")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("OptionsJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId", "GarmentType", "Name")
+                        .IsUnique();
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("TenantId", "BranchId", "GarmentType", "Name"), false);
+
+                    b.ToTable("GarmentAttributes");
+                });
+
+            modelBuilder.Entity("Domain.Entities.InventoryItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Color")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Design")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("PurchasePrice")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("QuantityOnHand")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("ReorderLevel")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("SellingPrice")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Sku")
+                        .HasColumnType("text");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Unit")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<decimal?>("Width")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("TenantId", "BranchId", "Category");
+
+                    b.HasIndex("TenantId", "BranchId", "Sku")
+                        .IsUnique()
+                        .HasFilter("\"Sku\" IS NOT NULL AND \"IsDeleted\" = FALSE");
+
+                    b.ToTable("InventoryItems");
+                });
+
+            modelBuilder.Entity("Domain.Entities.InventoryMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CounterpartBranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ExpenseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("MovementDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MovementType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("OrderItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Reference")
+                        .HasColumnType("text");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("TenantId", "OrderItemId");
+
+                    b.HasIndex("TenantId", "BranchId", "ItemId", "MovementDate");
+
+                    b.ToTable("InventoryMovements");
+                });
+
+            modelBuilder.Entity("Domain.Entities.KarigarLedgerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EntryDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("EntryType")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("KarigarId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("OrderItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("PaymentMethod")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("SignedAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("Stage")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("StageLogId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StageLogId")
+                        .IsUnique()
+                        .HasFilter("\"StageLogId\" IS NOT NULL AND \"EntryType\" = 1");
+
+                    b.HasIndex("TenantId", "BranchId", "KarigarId", "EntryDate");
+
+                    b.ToTable("KarigarLedgerEntries");
+                });
+
+            modelBuilder.Entity("Domain.Entities.KarigarRate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("GarmentType")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("KarigarId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Rate")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Stage")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId", "KarigarId", "GarmentType", "Stage")
+                        .IsUnique();
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("TenantId", "BranchId", "KarigarId", "GarmentType", "Stage"), false);
+
+                    b.ToTable("KarigarRates");
                 });
 
             modelBuilder.Entity("Domain.Entities.MeasurementField", b =>
@@ -220,7 +870,12 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("ValueType")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId");
 
                     b.HasIndex("TenantId", "ShopId", "Name")
                         .IsUnique();
@@ -249,6 +904,9 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("CreatedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("CurrentVersion")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("CustomerId")
                         .HasColumnType("uuid");
 
@@ -273,6 +931,9 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("TextValuesJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<Guid>("UpdatedBy")
                         .HasColumnType("uuid");
 
@@ -285,7 +946,71 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("TemplateId");
 
+                    b.HasIndex("TenantId", "BranchId", "CustomerId");
+
                     b.ToTable("MeasurementProfiles");
+                });
+
+            modelBuilder.Entity("Domain.Entities.MeasurementProfileVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FieldValuesJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TextValuesJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("VersionNo")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId", "VersionNo")
+                        .IsUnique();
+
+                    b.ToTable("MeasurementProfileVersions");
                 });
 
             modelBuilder.Entity("Domain.Entities.MeasurementTemplate", b =>
@@ -348,7 +1073,151 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("TenantId", "BranchId");
+
                     b.ToTable("MeasurementTemplates");
+                });
+
+            modelBuilder.Entity("Domain.Entities.NotificationMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Channel")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Recipient")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ScheduledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId", "EventType");
+
+                    b.HasIndex("Status", "ScheduledAt");
+
+                    b.HasIndex("TenantId", "BranchId", "CreatedOn");
+
+                    b.ToTable("NotificationMessages");
+                });
+
+            modelBuilder.Entity("Domain.Entities.NotificationTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Channel")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId", "EventType", "Channel")
+                        .IsUnique();
+
+                    b.ToTable("NotificationTemplates");
                 });
 
             modelBuilder.Entity("Domain.Entities.Order", b =>
@@ -377,6 +1246,9 @@ namespace Infrastructure.Migrations
 
                     b.Property<int?>("CancellationStage")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("CancelledOn")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("ClientId")
                         .HasColumnType("uuid");
@@ -412,8 +1284,14 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("PaymentStatus")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ReadyDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal>("RefundAmount")
                         .HasColumnType("numeric");
@@ -439,15 +1317,42 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("TrialDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TrialNotes")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("TrialRequired")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("UpdatedBy")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("UpdatedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerId");
+
+                    b.HasIndex("OrderNumber")
+                        .HasDatabaseName("IX_Orders_OrderNumber_trgm");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("OrderNumber"), "gin");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("OrderNumber"), new[] { "gin_trgm_ops" });
+
+                    b.HasIndex("TenantId", "BranchId", "CreatedOn");
+
+                    b.HasIndex("TenantId", "BranchId", "DeliveryDate");
+
+                    b.HasIndex("TenantId", "BranchId", "Status");
 
                     b.HasIndex("TenantId", "CustomerId", "Status");
 
@@ -471,16 +1376,25 @@ namespace Infrastructure.Migrations
                     b.Property<decimal>("AdditionalCharge")
                         .HasColumnType("numeric");
 
+                    b.Property<Guid?>("AssignedKarigarId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("BranchId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("ClientId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("CompletedOn")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeliveredOn")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("DeliveryDate")
@@ -502,8 +1416,14 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("OrderItemId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("RequiredChange")
+                        .HasColumnType("text");
+
                     b.Property<long>("Sr")
                         .HasColumnType("bigint");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
@@ -522,6 +1442,8 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("TenantId", "OrderItemId");
 
+                    b.HasIndex("TenantId", "BranchId", "Status");
+
                     b.ToTable("OrderAlterations");
                 });
 
@@ -533,6 +1455,9 @@ namespace Infrastructure.Migrations
 
                     b.Property<int>("ActiveStatus")
                         .HasColumnType("integer");
+
+                    b.Property<string>("AttributesJson")
+                        .HasColumnType("jsonb");
 
                     b.Property<Guid>("BranchId")
                         .HasColumnType("uuid");
@@ -549,10 +1474,19 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime?>("DeliveredOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal>("FabricCharge")
+                        .HasColumnType("numeric");
+
                     b.Property<string>("FabricColor")
                         .HasColumnType("text");
 
                     b.Property<string>("FabricDescription")
+                        .HasColumnType("text");
+
+                    b.Property<int>("FabricSource")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FittingNotes")
                         .HasColumnType("text");
 
                     b.Property<int>("GarmentType")
@@ -566,6 +1500,9 @@ namespace Infrastructure.Migrations
 
                     b.Property<Guid?>("MeasurementProfileId")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("MeasurementProfileVersion")
+                        .HasColumnType("integer");
 
                     b.Property<string>("MeasurementSnapshot")
                         .HasColumnType("jsonb");
@@ -605,6 +1542,8 @@ namespace Infrastructure.Migrations
                     b.HasIndex("MeasurementProfileId");
 
                     b.HasIndex("OrderId");
+
+                    b.HasIndex("TenantId", "BranchId");
 
                     b.HasIndex("TenantId", "OrderId");
 
@@ -674,6 +1613,8 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("TenantId", "AssignedKarigarId", "Stage");
 
+                    b.HasIndex("TenantId", "BranchId", "Stage");
+
                     b.ToTable("OrderItemStageAssignments");
                 });
 
@@ -701,6 +1642,15 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime>("CreatedOn")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("CutQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DefectNotes")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("FabricUsed")
+                        .HasColumnType("numeric");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
@@ -713,10 +1663,19 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("OrderItemId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("RecutRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ReworkReason")
+                        .HasColumnType("text");
+
                     b.Property<long>("Sr")
                         .HasColumnType("bigint");
 
                     b.Property<int>("Stage")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("TenantId")
@@ -735,6 +1694,8 @@ namespace Infrastructure.Migrations
                     b.HasIndex("OrderItemId");
 
                     b.HasIndex("TenantId", "OrderItemId");
+
+                    b.HasIndex("TenantId", "BranchId", "CompletedAt");
 
                     b.HasIndex("TenantId", "KarigarId", "Stage");
 
@@ -768,6 +1729,9 @@ namespace Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsRefund")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Note")
                         .HasColumnType("text");
 
@@ -797,6 +1761,8 @@ namespace Infrastructure.Migrations
                     b.HasIndex("OrderId");
 
                     b.HasIndex("TenantId", "OrderId");
+
+                    b.HasIndex("TenantId", "BranchId", "PaidAt");
 
                     b.ToTable("OrderPayments");
                 });
@@ -840,6 +1806,9 @@ namespace Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsManualOverride")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsReversal")
                         .HasColumnType("boolean");
 
@@ -874,6 +1843,203 @@ namespace Infrastructure.Migrations
                     b.HasIndex("TenantId", "OrderId");
 
                     b.ToTable("OrderStatusHistories");
+                });
+
+            modelBuilder.Entity("Domain.Entities.PasswordResetCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PasswordResetCodes");
+                });
+
+            modelBuilder.Entity("Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CreatedByIp")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReplacedByTokenId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ShopId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("Domain.Entities.SalaryAdvance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("AdvanceDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("RecoveredInSalaryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("StaffUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId", "StaffUserId");
+
+                    b.ToTable("SalaryAdvances");
+                });
+
+            modelBuilder.Entity("Domain.Entities.SalaryRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("HalfDayFactor")
+                        .HasColumnType("numeric");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MonthlySalary")
+                        .HasColumnType("numeric");
+
+                    b.Property<int>("PaidLeaveDays")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("StaffUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("WorkingDaysPerMonth")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId", "StaffUserId")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = FALSE");
+
+                    b.ToTable("SalaryRules");
                 });
 
             modelBuilder.Entity("Domain.Entities.Shop", b =>
@@ -921,6 +2087,9 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("NotificationsEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid?>("OwnerId")
                         .HasColumnType("uuid");
 
@@ -936,11 +2105,18 @@ namespace Infrastructure.Migrations
                     b.Property<DateTime?>("SubscriptionEndsAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("SubscriptionPlanId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("SubscriptionPlanName")
                         .HasColumnType("text");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("TrialEndsAt")
                         .HasColumnType("timestamp with time zone");
@@ -957,6 +2133,8 @@ namespace Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("OwnerId");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("Shops");
                 });
@@ -1027,6 +2205,8 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("AddedByUserId");
 
+                    b.HasIndex("TenantId", "BranchId", "ExpenseDate");
+
                     b.HasIndex("TenantId", "ShopId", "Category");
 
                     b.HasIndex("TenantId", "ShopId", "ExpenseDate");
@@ -1095,6 +2275,8 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("StaffUserId");
 
+                    b.HasIndex("TenantId", "BranchId", "Date");
+
                     b.HasIndex("TenantId", "StaffUserId", "Date")
                         .IsUnique();
 
@@ -1109,6 +2291,9 @@ namespace Infrastructure.Migrations
 
                     b.Property<int>("ActiveStatus")
                         .HasColumnType("integer");
+
+                    b.Property<decimal>("AmountPaid")
+                        .HasColumnType("numeric");
 
                     b.Property<decimal>("BaseSalary")
                         .HasColumnType("numeric");
@@ -1158,6 +2343,9 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("StaffUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
@@ -1174,12 +2362,116 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("StaffUserId");
 
+                    b.HasIndex("TenantId", "BranchId", "Year", "Month");
+
                     b.HasIndex("TenantId", "ShopId", "Year", "Month");
 
                     b.HasIndex("TenantId", "StaffUserId", "Month", "Year")
                         .IsUnique();
 
                     b.ToTable("StaffSalaries");
+                });
+
+            modelBuilder.Entity("Domain.Entities.SubscriptionPlan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("MaxBranches")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MaxOrdersPerMonth")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MaxUsers")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("MonthlyPrice")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("TrialDays")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("SubscriptionPlans");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Supplier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("text");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId", "Name");
+
+                    b.ToTable("Suppliers");
                 });
 
             modelBuilder.Entity("Domain.Entities.TemplateField", b =>
@@ -1212,9 +2504,6 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("MeasurementFieldId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("MeasurementProfileId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer");
 
@@ -1237,12 +2526,104 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("MeasurementFieldId");
 
-                    b.HasIndex("MeasurementProfileId");
-
                     b.HasIndex("TemplateId", "MeasurementFieldId")
                         .IsUnique();
 
                     b.ToTable("TemplateFields");
+                });
+
+            modelBuilder.Entity("Domain.Entities.TenantInvoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("InvoiceNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("PaymentMethod")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PaymentReference")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("PeriodEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("PeriodStart")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ShopId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceNumber")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "PeriodStart");
+
+                    b.ToTable("TenantInvoices");
+                });
+
+            modelBuilder.Entity("Domain.Entities.TenantRolePermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Granted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Permission")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RoleName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "RoleName", "Permission")
+                        .IsUnique();
+
+                    b.ToTable("TenantRolePermissions");
                 });
 
             modelBuilder.Entity("Domain.Entities.User", b =>
@@ -1272,10 +2653,16 @@ namespace Infrastructure.Migrations
                     b.Property<string>("Email")
                         .HasColumnType("text");
 
+                    b.Property<int>("FailedLoginCount")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<DateTime?>("LastLoginDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("LockoutEndsAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("LoginCount")
@@ -1312,6 +2699,10 @@ namespace Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Phone");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("AppUsers");
                 });
@@ -1518,6 +2909,27 @@ namespace Infrastructure.Migrations
                         .HasForeignKey("OrderId");
                 });
 
+            modelBuilder.Entity("Domain.Entities.InventoryItem", b =>
+                {
+                    b.HasOne("Domain.Entities.Supplier", "Supplier")
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("Domain.Entities.InventoryMovement", b =>
+                {
+                    b.HasOne("Domain.Entities.InventoryItem", "Item")
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Item");
+                });
+
             modelBuilder.Entity("Domain.Entities.MeasurementProfile", b =>
                 {
                     b.HasOne("Domain.Entities.Customer", "Customer")
@@ -1535,6 +2947,17 @@ namespace Infrastructure.Migrations
                     b.Navigation("Customer");
 
                     b.Navigation("Template");
+                });
+
+            modelBuilder.Entity("Domain.Entities.MeasurementProfileVersion", b =>
+                {
+                    b.HasOne("Domain.Entities.MeasurementProfile", "Profile")
+                        .WithMany("Versions")
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Profile");
                 });
 
             modelBuilder.Entity("Domain.Entities.Order", b =>
@@ -1635,7 +3058,7 @@ namespace Infrastructure.Migrations
             modelBuilder.Entity("Domain.Entities.OrderStatusHistory", b =>
                 {
                     b.HasOne("Domain.Entities.Order", "Order")
-                        .WithMany()
+                        .WithMany("StatusHistory")
                         .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1691,10 +3114,6 @@ namespace Infrastructure.Migrations
                         .HasForeignKey("MeasurementFieldId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("Domain.Entities.MeasurementProfile", null)
-                        .WithMany("TemplateFields")
-                        .HasForeignKey("MeasurementProfileId");
 
                     b.HasOne("Domain.Entities.MeasurementTemplate", "Template")
                         .WithMany("TemplateFields")
@@ -1772,7 +3191,7 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.MeasurementProfile", b =>
                 {
-                    b.Navigation("TemplateFields");
+                    b.Navigation("Versions");
                 });
 
             modelBuilder.Entity("Domain.Entities.MeasurementTemplate", b =>
@@ -1789,6 +3208,8 @@ namespace Infrastructure.Migrations
                     b.Navigation("Items");
 
                     b.Navigation("Payments");
+
+                    b.Navigation("StatusHistory");
                 });
 
             modelBuilder.Entity("Domain.Entities.OrderItem", b =>

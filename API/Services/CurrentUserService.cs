@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.Interfaces.Services;
 using System.Security.Claims;
 
@@ -30,8 +31,12 @@ public class CurrentUserService : ICurrentUserService
 
     public bool IsInRole(string role) => User?.IsInRole(role) ?? false;
 
-    public bool IsOwner => IsInRole("Owner");
-    public bool IsManager => IsInRole("Manager");
-    public bool IsKarigar => IsInRole("Karigar");
-    public bool IsReceptionist => IsInRole("Receptionist");
+    public bool IsSystemAdmin => IsInRole(AppRoles.SystemAdmin);
+    public bool IsOwner => IsInRole(AppRoles.Owner);
+    public bool IsManager => IsInRole(AppRoles.Manager);
+    public bool IsKarigar => IsInRole(AppRoles.Karigar);
+    public bool IsReceptionist => IsInRole(AppRoles.Receptionist);
+    public bool IsSupervisor => IsOwner || IsManager;
+
+    public string? IpAddress => _httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
 }

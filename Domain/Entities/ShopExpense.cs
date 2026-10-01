@@ -2,7 +2,7 @@ using Domain.Enums;
 
 namespace Domain.Entities;
 
-public class ShopExpense : BaseDBModel
+public class ShopExpense : BaseDBModel, IShopScoped
 {
     public Guid ShopId { get; set; }
     public string Category { get; set; } = string.Empty;   // flexible string category

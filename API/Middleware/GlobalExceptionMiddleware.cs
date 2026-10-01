@@ -1,9 +1,15 @@
+using System.Diagnostics;
+using System.Text.Json;
 using Application.Common;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace API.Middleware;
 
+/// <summary>
+/// Last-resort error handler. Every unhandled exception is logged with a trace id; the client
+/// receives the standard envelope with a safe message. Database and framework internals are
+/// only included in the response in the Development environment.
+/// </summary>
 public class GlobalExceptionMiddleware
 {
     private readonly RequestDelegate _next;
@@ -23,54 +29,58 @@ public class GlobalExceptionMiddleware
         {
             await _next(context);
         }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // Client went away — nothing to report.
+            if (!context.Response.HasStarted) context.Response.StatusCode = 499;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
-            await WriteErrorResponseAsync(context, ex);
+            var traceId = Activity.Current?.Id ?? context.TraceIdentifier;
+            var (statusCode, message) = Map(ex);
+
+            if (statusCode >= 500)
+                _logger.LogError(ex, "Unhandled exception {TraceId} on {Method} {Path}", traceId, context.Request.Method, context.Request.Path);
+            else
+                _logger.LogWarning(ex, "Request failed {TraceId} with {StatusCode} on {Method} {Path}", traceId, statusCode, context.Request.Method, context.Request.Path);
+
+            if (context.Response.HasStarted) throw;
+
+            context.Response.Clear();
+            context.Response.StatusCode = statusCode;
+            context.Response.ContentType = "application/json";
+
+            var errors = new List<string> { message, $"traceId: {traceId}" };
+            if (_env.IsDevelopment())
+                errors.Add(ex.InnerException?.Message ?? ex.Message);
+
+            var json = JsonSerializer.Serialize(ApiResponse<object>.Fail(errors, statusCode),
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            await context.Response.WriteAsync(json);
         }
     }
 
-    private async Task WriteErrorResponseAsync(HttpContext context, Exception ex)
+    internal static (int StatusCode, string Message) Map(Exception ex) => ex switch
     {
-        context.Response.ContentType = "application/json";
-
-        (int statusCode, string message) = ex switch
-        {
-            UnauthorizedAccessException => (401, "Unauthorized."),
-            KeyNotFoundException         => (404, ex.Message),
-            ArgumentException           => (400, ex.Message),
-            // EF/Npgsql write failures (FK violation, unique constraint, invalid value)
-            DbUpdateException dbEx       => (409, DescribeDbError(dbEx)),
-            InvalidOperationException   => (422, ex.Message),
-            _                           => (500, "An unexpected error occurred.")
-        };
-
-        context.Response.StatusCode = statusCode;
-
-        // In Development, surface the real cause (and inner exception) so 500s are debuggable.
-        var errors = _env.IsDevelopment()
-            ? new List<string> { message, ex.InnerException?.Message ?? ex.Message }
-            : new List<string> { message };
-
-        var response = ApiResponse<object>.Fail(errors);
-        var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
-
-        await context.Response.WriteAsync(json);
-    }
+        UnauthorizedAccessException      => (403, "You are not allowed to perform this action."),
+        KeyNotFoundException             => (404, "The requested record was not found."),
+        DbUpdateConcurrencyException     => (409, "The record was changed by someone else. Reload and try again."),
+        DbUpdateException dbEx           => (409, DescribeDbError(dbEx)),
+        BadHttpRequestException bad      => (bad.StatusCode, "The request could not be read."),
+        JsonException                    => (400, "The request body is not valid JSON for this endpoint."),
+        ArgumentException                => (400, "The request contains an invalid value."),
+        _                                => (500, "An unexpected error occurred.")
+    };
 
     private static string DescribeDbError(DbUpdateException ex)
     {
         var detail = ex.InnerException?.Message ?? ex.Message;
         if (detail.Contains("foreign key", StringComparison.OrdinalIgnoreCase))
-            return "A referenced record does not exist (e.g. the selected karigar/customer was not found).";
+            return "A referenced record does not exist (for example the selected karigar, customer or item).";
         if (detail.Contains("duplicate key", StringComparison.OrdinalIgnoreCase)
             || detail.Contains("unique", StringComparison.OrdinalIgnoreCase))
             return "This record already exists.";
-        // Surface the underlying database reason so the failure is diagnosable.
-        return $"The operation could not be saved: {detail}";
+        return "The change could not be saved.";
     }
 }
 

@@ -1,15 +1,18 @@
 using Application.Common;
-using Application.Interfaces;
 using Application.Interfaces.Repositories;
 using Application.Interfaces.Services;
+using Application.Mappings;
 using Application.Services;
 using Application.ViewModels.Common;
-using AutoMapper;
+using Application.ViewModels.Finance;
 using Domain.Entities;
-using System.Net;
 
 namespace Infrastructure.Services;
 
+/// <summary>
+/// Generic CRUD for <c>/api/expenses</c>. Tenant and branch are stamped by the DbContext
+/// (previously this service set only ShopId, so created expenses were invisible afterwards).
+/// </summary>
 public class ShopExpenseService<TCreate, TUpdate, TDetail>
     : BaseCrudService<ShopExpense, TCreate, TUpdate, TDetail>,
       IShopExpenseService<TCreate, TUpdate, TDetail>
@@ -17,56 +20,50 @@ public class ShopExpenseService<TCreate, TUpdate, TDetail>
     where TUpdate : class, IBaseCrudViewModel, IIdentification, new()
     where TDetail : class, IBaseCrudViewModel, new()
 {
-    private readonly IShopExpenseRepository _expenseRepo;
     private readonly ICurrentUserService _currentUser;
+    private readonly IBusinessCalendar _calendar;
+    private readonly IFinanceService _finance;
 
-    public ShopExpenseService(IShopExpenseRepository repo, ICurrentUserService currentUser, IMapper mapper)
+    public ShopExpenseService(IShopExpenseRepository repo, ICurrentUserService currentUser, IObjectMapper mapper,
+        IBusinessCalendar calendar, IFinanceService finance)
         : base(repo, mapper)
     {
-        _expenseRepo = repo;
         _currentUser = currentUser;
+        _calendar = calendar;
+        _finance = finance;
     }
 
-    public override async Task<ApiResponse<Guid>> CreateAsync(
-        TCreate vm, CancellationToken ct = default)
+    protected override string EntityName => "Expense";
+
+    public override async Task<ApiResponse<Guid>> CreateAsync(TCreate vm, CancellationToken ct = default)
     {
-        try
+        if (vm is CreateShopExpenseViewModel c)
         {
-            var entity = _mapper.Map<ShopExpense>(vm);
-            entity.ShopId        = _currentUser.ShopId;
-            entity.AddedByUserId = _currentUser.UserId;
-            entity.CreatedBy     = _currentUser.UserId;
-            entity.CreatedOn     = DateTime.UtcNow;
-            entity.ActiveStatus = Domain.Enums.ActiveStatus.Active;
-            await _repo.AddAsync(entity, ct);
-            return new ApiResponse<Guid>(entity.Id);
+            var error = await _finance.ValidateCategoryAsync(c.Category, ct);
+            if (error != null) return ApiResponse<Guid>.Fail(error);
         }
-        catch (Exception ex)
-        {
-            var response = new ApiResponse<Guid>("An error occurred while creating the record.", (int)HttpStatusCode.InternalServerError);
-            response.Errors.Add(ex.InnerException?.Message ?? ex.Message);
-            return response;
-        }
+        return await base.CreateAsync(vm, ct);
     }
 
-    public override async Task<ApiResponse<Guid>> UpdateAsync(
-        TUpdate vm, CancellationToken ct = default)
+    public override async Task<ApiResponse<Guid>> UpdateAsync(TUpdate vm, CancellationToken ct = default)
     {
-        try
+        if (vm is UpdateShopExpenseViewModel u && u.Category != null)
         {
-            var entity = await _repo.GetByIdAsync(vm.Id, ct);
-            if (entity == null) return new ApiResponse<Guid>("Expense not found.", 404);
-            _mapper.Map(vm, entity);
-            entity.UpdatedBy = _currentUser.UserId;
-            entity.UpdatedOn = DateTime.UtcNow;
-            await _repo.UpdateAsync(entity, ct);
-            return new ApiResponse<Guid>(entity.Id);
+            var error = await _finance.ValidateCategoryAsync(u.Category, ct);
+            if (error != null) return ApiResponse<Guid>.Fail(error);
         }
-        catch (Exception ex)
-        {
-            var response = new ApiResponse<Guid>("An error occurred while updating the record.", (int)HttpStatusCode.InternalServerError);
-            response.Errors.Add(ex.InnerException?.Message ?? ex.Message);
-            return response;
-        }
+        return await base.UpdateAsync(vm, ct);
+    }
+
+    protected override async Task BeforeCreateAsync(ShopExpense entity, TCreate vm, CancellationToken ct)
+    {
+        entity.AddedByUserId = _currentUser.UserId;
+        entity.ExpenseDate = await _calendar.ToCalendarDateAsync(entity.ExpenseDate, ct);
+    }
+
+    protected override async Task BeforeUpdateAsync(ShopExpense entity, TUpdate vm, CancellationToken ct)
+    {
+        if (vm is UpdateShopExpenseViewModel { ExpenseDate: not null })
+            entity.ExpenseDate = await _calendar.ToCalendarDateAsync(entity.ExpenseDate, ct);
     }
 }

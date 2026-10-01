@@ -10,6 +10,11 @@ public class OrderItem : BaseDBModel
     public string? MeasurementSnapshot { get; set; }   // JSONB: {fieldId: value, ...}
     public string? FabricDescription { get; set; }
     public string? FabricColor { get; set; }
+    public FabricSource FabricSource { get; set; } = FabricSource.CustomerProvided;
+    public decimal FabricCharge { get; set; }
+    public string? AttributesJson { get; set; }    // JSONB: {attributeName: value}
+    public string? FittingNotes { get; set; }
+    public int? MeasurementProfileVersion { get; set; }
     public string? StyleNotes { get; set; }
     public decimal Price { get; set; }
     public int Qty { get; set; } = 1;

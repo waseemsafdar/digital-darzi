@@ -24,4 +24,5 @@ public interface IMeasurementService
     Task<ApiResponse<MeasurementProfileDetailViewModel>> SaveProfileAsync(SaveMeasurementProfileViewModel vm, CancellationToken ct = default);
     Task<ApiResponse<MeasurementProfileDetailViewModel>> UpdateProfileAsync(Guid id, SaveMeasurementProfileViewModel vm, CancellationToken ct = default);
     Task<ApiResponse<object>> DeleteProfileAsync(Guid id, CancellationToken ct = default);
+    Task<ApiResponse<List<MeasurementProfileVersionViewModel>>> GetProfileVersionsAsync(Guid id, CancellationToken ct = default);
 }

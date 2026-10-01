@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using Application.Common;
 using Application.Interfaces.Repositories;
 using Application.ViewModels.Common;
 using Domain.Entities;
@@ -9,8 +8,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Infrastructure.Repositories;
 
 /// <summary>
-/// Generic base repository — all concrete repositories should inherit from this.
-/// Provides standard EF Core CRUD with soft-delete support and typed filters.
+/// Generic base repository with soft-delete support and typed filters.
+/// Every read goes through the DbSet, so the tenant/branch global query filters always apply.
+/// Tenant, branch and audit columns are stamped by <see cref="ApplicationDbContext"/> on save.
 /// </summary>
 public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : BaseDBModel
 {
@@ -23,57 +23,38 @@ public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : 
         _dbSet = db.Set<TEntity>();
     }
 
-    protected virtual IQueryable<TEntity> GetBaseQuery()
-    {
-        return _dbSet.AsNoTracking().Where(x => !x.IsDeleted);
-    }
+    protected virtual IQueryable<TEntity> GetBaseQuery() => _dbSet.AsNoTracking().Where(x => !x.IsDeleted);
 
-    /// <summary>
-    /// Tracked base query — used by single-entity fetches (GetById) so the returned entity
-    /// can be mutated and saved. List/paged reads use <see cref="GetBaseQuery"/> (no-tracking).
-    /// </summary>
-    protected virtual IQueryable<TEntity> GetTrackedQuery()
-    {
-        return _dbSet.Where(x => !x.IsDeleted);
-    }
+    /// <summary>Tracked query for single-entity fetches so the returned entity can be mutated and saved.</summary>
+    protected virtual IQueryable<TEntity> GetTrackedQuery() => _dbSet.Where(x => !x.IsDeleted);
 
     protected virtual Task<IQueryable<TEntity>> ApplyFiltersAsync(IQueryable<TEntity> query, IBaseSearchModel search)
-    {
-        return Task.FromResult(query);
-    }
+        => Task.FromResult(query);
 
     public virtual async Task<TEntity?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        return await GetTrackedQuery().FirstOrDefaultAsync(x => x.Id == id, ct);
-    }
+        => await GetTrackedQuery().FirstOrDefaultAsync(x => x.Id == id, ct);
 
     public virtual async Task<IEnumerable<TEntity>> GetAllAsync(CancellationToken ct = default)
-    {
-        return await GetBaseQuery().ToListAsync(ct);
-    }
+        => await GetBaseQuery().ToListAsync(ct);
 
     public virtual async Task<(IEnumerable<TEntity> Items, int TotalCount)> GetPagedAsync(IBaseSearchModel search, CancellationToken ct = default)
     {
-        var query = GetBaseQuery();
-        query = await ApplyFiltersAsync(query, search);
-
+        var query = await ApplyFiltersAsync(GetBaseQuery(), search);
         var total = await query.CountAsync(ct);
 
         if (!search.DisablePagination)
         {
-            query = query
-                .Skip((search.PageNumber - 1) * search.PageSize)
-                .Take(search.PageSize);
+            // A stable order is required for paging; filters may already have ordered the query.
+            if (query.Expression.Type != typeof(IOrderedQueryable<TEntity>))
+                query = query.OrderByDescending(x => x.CreatedOn).ThenBy(x => x.Id);
+            query = query.Skip((search.PageNumber - 1) * search.PageSize).Take(search.PageSize);
         }
 
-        var items = await query.ToListAsync(ct);
-        return (items, total);
+        return (await query.ToListAsync(ct), total);
     }
 
     public virtual async Task<IEnumerable<TEntity>> FindAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken ct = default)
-    {
-        return await _dbSet.Where(predicate).ToListAsync(ct);
-    }
+        => await _dbSet.Where(predicate).ToListAsync(ct);
 
     public virtual async Task<TEntity> AddAsync(TEntity entity, CancellationToken ct = default)
     {
@@ -89,20 +70,16 @@ public class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : 
         await _db.SaveChangesAsync(ct);
     }
 
+    /// <summary>Soft delete through the filtered query — a row outside the caller's tenant/branch is never touched.</summary>
     public virtual async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var entity = await _dbSet.FindAsync(new object[] { id }, ct);
-        if (entity != null)
-        {
-            entity.IsDeleted = true;
-            _dbSet.Update(entity);
-            await _db.SaveChangesAsync(ct);
-        }
+        var entity = await GetTrackedQuery().FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (entity == null) return;
+        entity.IsDeleted = true;
+        await _db.SaveChangesAsync(ct);
     }
 
-    public virtual async Task SaveChangesAsync(CancellationToken ct = default)
-        => await _db.SaveChangesAsync(ct);
+    public virtual async Task SaveChangesAsync(CancellationToken ct = default) => await _db.SaveChangesAsync(ct);
 
-    public void Detach(TEntity entity)
-        => _db.Entry(entity).State = EntityState.Detached;
+    public void Detach(TEntity entity) => _db.Entry(entity).State = EntityState.Detached;
 }

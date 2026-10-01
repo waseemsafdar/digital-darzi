@@ -421,3 +421,6 @@ graphify-out/
 /scaffold_all.ps1
 /scaffold_all.py
 /scaffold_missing.ps1
+
+# Uploaded files (local file storage)
+API/App_Data/

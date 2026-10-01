@@ -1,3 +1,4 @@
+using API.Authorization;
 using Application.Common;
 using Application.Interfaces.Services;
 using Application.ViewModels.User;
@@ -8,55 +9,49 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/users")]
-[Authorize(Roles = $"{AppRoles.Owner},{AppRoles.Manager}")]  // SystemAdmin uses /api/admin/* instead
+[Authorize]
 public class UsersController : BaseController
 {
     private readonly IUserService _service;
     public UsersController(IUserService service) => _service = service;
 
     [HttpGet]
-    public async Task<IActionResult> GetList(
-        [FromQuery] Guid? shopId,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        CancellationToken ct = default)
+    [HasPermission(Permissions.UsersView)]
+    public async Task<IActionResult> GetList([FromQuery] Guid? shopId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
         => ReturnProcessedResponse(await _service.GetListAsync(shopId, page, pageSize, ct));
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetDetail(Guid id, CancellationToken ct)
-        => ReturnProcessedResponse(await _service.GetDetailAsync(id, ct));
+    [HasPermission(Permissions.UsersView)]
+    public async Task<IActionResult> GetDetail(Guid id, CancellationToken ct) => ReturnProcessedResponse(await _service.GetDetailAsync(id, ct));
 
     [HttpPost]
-    [Authorize(Roles = AppRoles.Owner)]
+    [HasPermission(Permissions.UsersManage)]
     public async Task<IActionResult> Create([FromBody] CreateUserViewModel vm, CancellationToken ct)
     {
         var result = await _service.CreateAsync(vm, ct);
-        return result.Success
-            ? CreatedAtAction(nameof(GetDetail), new { id = result.Data!.Id }, result)
-            : ReturnProcessedResponse(result);
+        return result.Success ? CreatedAtAction(nameof(GetDetail), new { id = result.Data!.Id }, result) : ReturnProcessedResponse(result);
     }
 
+    /// <summary>Managers may edit name and phone; only the Owner may change roles, branches or status.</summary>
     [HttpPut]
-    public async Task<IActionResult> Update([FromBody] UpdateUserViewModel vm, CancellationToken ct)
-        => ReturnProcessedResponse(await _service.UpdateAsync(vm, ct));
+    [HasPermission(Permissions.UsersEdit)]
+    public async Task<IActionResult> Update([FromBody] UpdateUserViewModel vm, CancellationToken ct) => ReturnProcessedResponse(await _service.UpdateAsync(vm, ct));
 
     [HttpPost("{id}/deactivate")]
-    [Authorize(Roles = AppRoles.Owner)]
-    public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct)
-        => ReturnProcessedResponse(await _service.DeactivateAsync(id, ct));
+    [HasPermission(Permissions.UsersManage)]
+    public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct) => ReturnProcessedResponse(await _service.DeactivateAsync(id, ct));
 
     [HttpPut("{id}/shops")]
-    [Authorize(Roles = AppRoles.Owner)]
+    [HasPermission(Permissions.UsersManage)]
     public async Task<IActionResult> AssignShops(Guid id, [FromBody] List<Guid> shopIds, CancellationToken ct)
         => ReturnProcessedResponse(await _service.AssignShopsAsync(id, shopIds, ct));
 
     [HttpPut("{id}/roles")]
-    [Authorize(Roles = AppRoles.Owner)]
+    [HasPermission(Permissions.UsersManage)]
     public async Task<IActionResult> AssignRoles(Guid id, [FromBody] List<Guid> roleIds, CancellationToken ct)
         => ReturnProcessedResponse(await _service.AssignRolesAsync(id, roleIds, ct));
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = AppRoles.Owner)]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
-        => ReturnProcessedResponse(await _service.DeleteAsync(id, ct));
+    [HasPermission(Permissions.UsersManage)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct) => ReturnProcessedResponse(await _service.DeleteAsync(id, ct));
 }

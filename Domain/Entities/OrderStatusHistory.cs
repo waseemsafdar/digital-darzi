@@ -14,6 +14,7 @@ public class OrderStatusHistory : BaseDBModel
     public OrderStatus FromStatus { get; set; }
     public OrderStatus ToStatus { get; set; }
     public bool IsReversal { get; set; } = false;    // true when status goes backward
+    public bool IsManualOverride { get; set; }       // Owner/Manager forced a transition outside the table
     public Guid? AssignedFrom { get; set; }          // for reassignment logs
     public Guid? AssignedTo { get; set; }            // for reassignment logs
     public DateTime ChangedOn { get; set; } = DateTime.UtcNow;

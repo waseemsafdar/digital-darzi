@@ -49,6 +49,12 @@ public enum OrderStatus
     PartiallyDelivered = 9,
     Delivered          = 10,
     Cancelled          = 11,
+
+    /// <summary>
+    /// LEGACY. Earlier versions overwrote the production status with this value when an order was
+    /// paid in full. Payment state now lives in <see cref="PaymentStatus"/>; the API never sets this
+    /// value any more, and an order still carrying it may be moved to any non-legacy status.
+    /// </summary>
     FullyPaid          = 12
 }
 
@@ -93,7 +99,9 @@ public enum AlterationStatus
 {
     Received   = 1,
     InProgress = 2,
-    Done       = 3
+    Done       = 3,
+    Delivered  = 4,
+    Cancelled  = 5
 }
 
 public enum StageAssignmentMode
@@ -121,8 +129,10 @@ public enum SalaryStatus
 
 public enum AttachmentType
 {
-    Order = 1,
-    // future types can be added here, e.g., Customer, Product, etc.
+    Order     = 1,
+    Expense   = 2,
+    Customer  = 3,
+    OrderItem = 4
 }
 
 public enum ProductionStage
@@ -159,4 +169,140 @@ public enum SubscriptionStatus
     Active = 2,
     Suspended = 3,
     Cancelled = 4
+}
+
+public enum PaymentStatus
+{
+    Unpaid   = 0,
+    Partial  = 1,
+    Paid     = 2,
+    Refunded = 3
+}
+
+public enum StageLogStatus
+{
+    InProgress     = 0,
+    Completed      = 1,
+    ReworkRequired = 2
+}
+
+public enum CustomerType
+{
+    Regular   = 1,
+    VIP       = 2,
+    Corporate = 3,
+    WalkIn    = 4
+}
+
+public enum FabricSource
+{
+    CustomerProvided  = 1,
+    ShopProvided      = 2,
+    PurchasedForOrder = 3
+}
+
+public enum KarigarLedgerEntryType
+{
+    Earning    = 1,   // +  completed stage work
+    Advance    = 2,   // -  money handed over before it was earned
+    Deduction  = 3,   // -  penalty / rework / damaged fabric
+    Payment    = 4,   // -  payout settling the balance
+    Adjustment = 5    // +/- manual correction
+}
+
+public enum TrialOutcome
+{
+    Approved           = 1,
+    AlterationRequired = 2
+}
+
+public enum MeasurementValueType
+{
+    Number = 1,
+    Text   = 2
+}
+
+public enum NotificationChannel
+{
+    WhatsApp = 1,
+    Sms      = 2,
+    Email    = 3,
+    InApp    = 4
+}
+
+public enum NotificationEvent
+{
+    OrderConfirmed   = 1,
+    OrderReady       = 2,
+    TrialReady       = 3,
+    DeliveryReminder = 4,
+    PaymentReminder  = 5,
+    AlterationReady  = 6,
+    PaymentReceived  = 7,
+    OrderOverdue     = 8,
+    PasswordReset    = 9,
+    Custom           = 99
+}
+
+public enum NotificationStatus
+{
+    Pending = 0,
+    Sending = 1,
+    Sent    = 2,
+    Failed  = 3,
+    Skipped = 4
+}
+
+public enum InventoryCategory
+{
+    Fabric    = 1,
+    Button    = 2,
+    Thread    = 3,
+    Zipper    = 4,
+    Lining    = 5,
+    Accessory = 6,
+    Packaging = 7,
+    Other     = 99
+}
+
+public enum InventoryUnit
+{
+    Meter = 1,
+    Yard  = 2,
+    Piece = 3,
+    Roll  = 4,
+    Spool = 5,
+    Kg    = 6,
+    Pack  = 7
+}
+
+public enum InventoryMovementType
+{
+    Purchase        = 1,   // +
+    IssueToOrder    = 2,   // -
+    ReturnFromOrder = 3,   // +
+    Adjustment      = 4,   // +/-
+    Waste           = 5,   // -
+    TransferOut     = 6,   // -
+    TransferIn      = 7,   // +
+    SupplierReturn  = 8    // -
+}
+
+public enum CashSessionStatus
+{
+    Open   = 1,
+    Closed = 2
+}
+
+public enum CashMovementDirection
+{
+    In  = 1,
+    Out = 2
+}
+
+public enum InvoiceStatus
+{
+    Pending = 1,
+    Paid    = 2,
+    Void    = 3
 }

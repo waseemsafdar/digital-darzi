@@ -11,4 +11,8 @@ public class User : BaseDBModel
     public List<Guid> ShopIds { get; set; } = new();   // shops this user can access
     public DateTime? LastLoginDate { get; set; }
     public int LoginCount { get; set; } = 0;
+
+    // PIN-login brute-force protection (email users use ASP.NET Identity lockout)
+    public int FailedLoginCount { get; set; }
+    public DateTime? LockoutEndsAt { get; set; }
 }

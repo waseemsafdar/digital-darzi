@@ -12,6 +12,14 @@ public class OrderItemStageLog : BaseDBModel
     public Guid KarigarId { get; set; }
     public string? Notes { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public StageLogStatus Status { get; set; } = StageLogStatus.InProgress;
+    public string? ReworkReason { get; set; }
+
+    // Cutting-stage details (null for other stages)
+    public decimal? FabricUsed { get; set; }
+    public int? CutQuantity { get; set; }
+    public string? DefectNotes { get; set; }
+    public bool RecutRequired { get; set; }
 
     // Navigation
     public OrderItem OrderItem { get; set; } = null!;

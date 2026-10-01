@@ -5,6 +5,7 @@ using Infrastructure.Data;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Data;
 
@@ -19,91 +20,84 @@ public static class DbInitializer
         "Receptionist"
     };
 
+    /// <summary>Initial SystemAdmin, read from configuration ("Seed:AdminEmail" / "Seed:AdminPassword").</summary>
+    public sealed record AdminSeed(string? Email, string? Password);
+
+    /// <summary>
+    /// Idempotent seeding: roles, the system measurement catalogue, default subscription plans,
+    /// and — only when configured and no Identity user exists yet — the first SystemAdmin.
+    /// There is no built-in password: without configuration no admin is created.
+    /// </summary>
     public static async Task SeedAsync(
         RoleManager<IdentityRole<Guid>> roleManager,
         UserManager<ApplicationUser> userManager,
         ApplicationDbContext db,
         ITenantSetupService tenantSetup,
+        AdminSeed admin,
+        Microsoft.Extensions.Logging.ILogger logger,
         CancellationToken ct = default)
     {
-        // 1. Seed roles (idempotent)
+        db.AuditEnabled = false;
+
         foreach (var role in DefaultRoles)
         {
             if (!await roleManager.RoleExistsAsync(role))
                 await roleManager.CreateAsync(new IdentityRole<Guid>(role));
         }
 
-        // 2. Seed system measurement fields if not already seeded
-        var systemFieldExists = await db.MeasurementFields
-            .IgnoreQueryFilters()
-            .AnyAsync(f => f.TenantId == Guid.Empty, ct);
-
-        if (!systemFieldExists)
-        {
+        if (!await db.MeasurementFields.IgnoreQueryFilters().AnyAsync(f => f.TenantId == Guid.Empty, ct))
             await SeedSystemMeasurementFieldsAsync(db, ct);
+
+        if (!await db.SubscriptionPlans.AnyAsync(ct))
+        {
+            db.SubscriptionPlans.AddRange(
+                new SubscriptionPlan { Name = "Starter",  MonthlyPrice = 1500, MaxBranches = 1, MaxUsers = 5,  MaxOrdersPerMonth = 300, TrialDays = 14 },
+                new SubscriptionPlan { Name = "Growth",   MonthlyPrice = 3500, MaxBranches = 3, MaxUsers = 20, MaxOrdersPerMonth = 2000, TrialDays = 14 },
+                new SubscriptionPlan { Name = "Business", MonthlyPrice = 7500, MaxBranches = null, MaxUsers = null, MaxOrdersPerMonth = null, TrialDays = 14 });
+            await db.SaveChangesAsync(ct);
         }
 
-        // 3. Seed initial admin user if no users exist
-        if (!await userManager.Users.AnyAsync(ct))
+        if (await userManager.Users.AnyAsync(ct)) return;
+
+        if (string.IsNullOrWhiteSpace(admin.Email) || string.IsNullOrWhiteSpace(admin.Password))
         {
-            var adminEmail = "admin@digitaldarzi.com";
-            var adminUser = new ApplicationUser
-            {
-                Id = Guid.NewGuid(),
-                UserName = adminEmail,
-                Email = adminEmail,
-                EmailConfirmed = true
-            };
-            
-            var result = await userManager.CreateAsync(adminUser, "Admin123!");
-            if (result.Succeeded)
-            {
-                await userManager.AddToRoleAsync(adminUser, "SystemAdmin");
-                
-                var systemTenantId = Guid.NewGuid();
-                var systemShopId = Guid.NewGuid();
-                
-                var domainUser = new User
-                {
-                    Id = Guid.NewGuid(),
-                    TenantId = systemTenantId,
-                    BranchId = systemShopId,
-                    Name = "System Admin",
-                    Email = adminEmail,
-                    AuthId = adminUser.Id,
-                    ShopIds = new List<Guid> { systemShopId },
-                    ActiveStatus = ActiveStatus.Active,
-                    CreatedOn = DateTime.UtcNow,
-                    UpdatedOn = DateTime.UtcNow
-                };
-                
-                var sysRole = await roleManager.FindByNameAsync("SystemAdmin");
-                if (sysRole != null)
-                {
-                    domainUser.RoleIds = new List<Guid> { sysRole.Id };
-                }
-                
-                db.AppUsers.Add(domainUser);
-                
-                var shop = new Shop
-                {
-                    Id = systemShopId,
-                    TenantId = systemTenantId,
-                    BranchId = systemShopId,
-                    Name = "Digital Darzi HQ",
-                    ActiveStatus = ActiveStatus.Active,
-                    CreatedBy = domainUser.Id,
-                    UpdatedBy = domainUser.Id,
-                    CreatedOn = DateTime.UtcNow,
-                    UpdatedOn = DateTime.UtcNow
-                };
-                
-                db.Shops.Add(shop);
-                await db.SaveChangesAsync(ct);
-                
-                await tenantSetup.SetupNewTenantAsync(systemTenantId, systemShopId, domainUser.Id, ct);
-            }
+            logger.LogWarning("No users exist and Seed:AdminEmail / Seed:AdminPassword are not configured; no SystemAdmin was created.");
+            return;
         }
+
+        var adminUser = new ApplicationUser { Id = Guid.NewGuid(), UserName = admin.Email, Email = admin.Email, EmailConfirmed = true };
+        var result = await userManager.CreateAsync(adminUser, admin.Password);
+        if (!result.Succeeded)
+        {
+            logger.LogError("Seeding the SystemAdmin failed: {Errors}", string.Join("; ", result.Errors.Select(e => e.Description)));
+            return;
+        }
+        await userManager.AddToRoleAsync(adminUser, "SystemAdmin");
+
+        var systemTenantId = Guid.NewGuid();
+        var systemShopId = Guid.NewGuid();
+        var sysRole = await roleManager.FindByNameAsync("SystemAdmin");
+        var domainUser = new User
+        {
+            Id           = Guid.NewGuid(),
+            TenantId     = systemTenantId,
+            BranchId     = systemShopId,
+            Name         = "System Admin",
+            Email        = admin.Email,
+            AuthId       = adminUser.Id,
+            RoleIds      = sysRole != null ? new List<Guid> { sysRole.Id } : new List<Guid>(),
+            ShopIds      = new List<Guid> { systemShopId },
+            ActiveStatus = ActiveStatus.Active
+        };
+        db.AppUsers.Add(domainUser);
+        db.Shops.Add(new Shop
+        {
+            Id = systemShopId, TenantId = systemTenantId, BranchId = systemShopId, Name = "Digital Darzi HQ",
+            ActiveStatus = ActiveStatus.Active, CreatedBy = domainUser.Id, UpdatedBy = domainUser.Id
+        });
+        await db.SaveChangesAsync(ct);
+        await tenantSetup.SetupNewTenantAsync(systemTenantId, systemShopId, domainUser.Id, ct);
+        logger.LogInformation("Seeded SystemAdmin {Email}. Change the password after first sign-in.", admin.Email);
     }
 
     private static async Task SeedSystemMeasurementFieldsAsync(ApplicationDbContext db, CancellationToken ct)

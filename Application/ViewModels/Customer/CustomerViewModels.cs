@@ -8,6 +8,11 @@ public class CreateCustomerViewModel : IBaseCrudViewModel
 {
     public string Name { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
+    public string? WhatsAppNumber { get; set; }
+    public CustomerType CustomerType { get; set; } = CustomerType.Regular;
+    public Guid? PreferredKarigarId { get; set; }
+    public string? PreferredStyles { get; set; }
+    public bool NotificationsOptOut { get; set; }
     public string? Email { get; set; }
     public string? Address { get; set; }
     public string? City { get; set; }
@@ -21,6 +26,11 @@ public class UpdateCustomerViewModel : IBaseCrudViewModel, IIdentification
     public Guid Id { get; set; }
     public string? Name { get; set; }
     public string? Phone { get; set; }
+    public string? WhatsAppNumber { get; set; }
+    public CustomerType? CustomerType { get; set; }
+    public Guid? PreferredKarigarId { get; set; }
+    public string? PreferredStyles { get; set; }
+    public bool? NotificationsOptOut { get; set; }
     public string? Email { get; set; }
     public string? Address { get; set; }
     public string? City { get; set; }
@@ -33,6 +43,8 @@ public class UpdateCustomerViewModel : IBaseCrudViewModel, IIdentification
 public class CustomerSearchViewModel : BaseSearchModel
 {
     public string? Query { get; set; }       // name or phone search
+    public CustomerType? CustomerType { get; set; }
+    public bool? HasBalance { get; set; }
     public string? City { get; set; }
     public Gender? Gender { get; set; }
     public ActiveStatus? ActiveStatus { get; set; }
@@ -56,6 +68,11 @@ public class CustomerDetailViewModel : IBaseCrudViewModel
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
+    public string? WhatsAppNumber { get; set; }
+    public CustomerType CustomerType { get; set; } = CustomerType.Regular;
+    public Guid? PreferredKarigarId { get; set; }
+    public string? PreferredStyles { get; set; }
+    public bool NotificationsOptOut { get; set; }
     public string? Email { get; set; }
     public string? Address { get; set; }
     public string? City { get; set; }
@@ -71,6 +88,19 @@ public class CustomerDetailViewModel : IBaseCrudViewModel
 }
 
 // ── Customer Ledger ──────────────────────────────────────────────────────
+/// <summary>One line of the customer's running account: an order charge, a payment or a refund.</summary>
+public class CustomerLedgerEntryViewModel
+{
+    public DateTime Date { get; set; }
+    public string Type { get; set; } = string.Empty;      // Order / Alteration / Payment / Refund
+    public Guid OrderId { get; set; }
+    public string OrderNumber { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public decimal Debit { get; set; }                    // amount the customer owes
+    public decimal Credit { get; set; }                   // amount the customer paid
+    public decimal RunningBalance { get; set; }
+}
+
 public class CustomerLedgerOrderViewModel
 {
     public Guid OrderId { get; set; }
@@ -88,6 +118,7 @@ public class CustomerLedgerViewModel
     public string Name { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public List<CustomerLedgerOrderViewModel> Orders { get; set; } = new();
+    public List<CustomerLedgerEntryViewModel> Entries { get; set; } = new();
     public decimal TotalGrand { get; set; }
     public decimal TotalPaid { get; set; }
     public decimal TotalDue { get; set; }

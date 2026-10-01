@@ -2,11 +2,16 @@ using Domain.Enums;
 
 namespace Domain.Entities;
 
-public class Customer : BaseDBModel
+public class Customer : BaseDBModel, IShopScoped
 {
     public Guid ShopId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
+    public string? WhatsAppNumber { get; set; }
+    public CustomerType CustomerType { get; set; } = CustomerType.Regular;
+    public Guid? PreferredKarigarId { get; set; }
+    public string? PreferredStyles { get; set; }
+    public bool NotificationsOptOut { get; set; }
     public string? Email { get; set; }
     public string? Address { get; set; }
     public string? City { get; set; }

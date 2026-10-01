@@ -28,6 +28,22 @@ public class DashboardSummaryViewModel
     public int TotalCustomers { get; set; }
     public int NewCustomersThisPeriod { get; set; }
 
+    // Today (shop-local)
+    public int TodayOrders { get; set; }
+    public decimal TodaySales { get; set; }
+    public decimal TodayCollections { get; set; }
+    public decimal TodayExpenses { get; set; }
+
+    // Production / delivery (current, not period-bound)
+    public int ActiveOrders { get; set; }
+    public int InProduction { get; set; }
+    public int ReadyForDelivery { get; set; }
+    public int DueTomorrowOrders { get; set; }
+    public int ReworkItems { get; set; }
+    public int OpenAlterations { get; set; }
+    public decimal OutstandingCustomerBalance { get; set; }
+    public List<KarigarWorkloadViewModel> KarigarWorkload { get; set; } = new();
+
     // Quick stats
     public decimal AverageOrderValue { get; set; }
     public List<DailyRevenueViewModel> DailyRevenue { get; set; } = new();
@@ -121,6 +137,27 @@ public class OrderStatusReportViewModel
     public int Cancelled { get; set; }
     public int Overdue { get; set; }
     public List<StageQueueCountViewModel> StageQueues { get; set; } = new();
+}
+
+public class KarigarWorkloadViewModel
+{
+    public Guid KarigarId { get; set; }
+    public string KarigarName { get; set; } = string.Empty;
+    public int OpenTasks { get; set; }
+    public int InProgress { get; set; }
+    public int OverdueTasks { get; set; }
+}
+
+public class BranchComparisonViewModel
+{
+    public Guid ShopId { get; set; }
+    public string ShopName { get; set; } = string.Empty;
+    public int Orders { get; set; }
+    public decimal Revenue { get; set; }
+    public decimal Collected { get; set; }
+    public decimal Expenses { get; set; }
+    public decimal OutstandingBalance { get; set; }
+    public int ActiveOrders { get; set; }
 }
 
 public class StageQueueCountViewModel

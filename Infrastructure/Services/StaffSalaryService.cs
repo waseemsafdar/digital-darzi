@@ -1,15 +1,17 @@
 using Application.Common;
-using Application.Interfaces;
 using Application.Interfaces.Repositories;
 using Application.Interfaces.Services;
+using Application.Mappings;
 using Application.Services;
 using Application.ViewModels.Common;
-using AutoMapper;
+using Application.ViewModels.Finance;
 using Domain.Entities;
-using System.Net;
+using Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services;
 
+/// <summary>Generic CRUD for <c>/api/salaries</c>. Net and payment status are always derived.</summary>
 public class StaffSalaryService<TCreate, TUpdate, TDetail>
     : BaseCrudService<StaffSalary, TCreate, TUpdate, TDetail>,
       IStaffSalaryService<TCreate, TUpdate, TDetail>
@@ -17,61 +19,45 @@ public class StaffSalaryService<TCreate, TUpdate, TDetail>
     where TUpdate : class, IBaseCrudViewModel, IIdentification, new()
     where TDetail : class, IBaseCrudViewModel, new()
 {
-    private readonly IStaffSalaryRepository _salaryRepo;
-    private readonly ICurrentUserService _currentUser;
+    private readonly ApplicationDbContext _db;
+    private readonly IBusinessCalendar _calendar;
 
-    public StaffSalaryService(IStaffSalaryRepository repo, ICurrentUserService currentUser, IMapper mapper)
+    public StaffSalaryService(IStaffSalaryRepository repo, IObjectMapper mapper, ApplicationDbContext db, IBusinessCalendar calendar)
         : base(repo, mapper)
     {
-        _salaryRepo  = repo;
-        _currentUser = currentUser;
+        _db = db;
+        _calendar = calendar;
     }
 
-    public override async Task<ApiResponse<Guid>> CreateAsync(
-        TCreate vm, CancellationToken ct = default)
+    protected override string EntityName => "Salary record";
+
+    public override async Task<ApiResponse<Guid>> CreateAsync(TCreate vm, CancellationToken ct = default)
     {
-        try
+        if (vm is RecordStaffSalaryViewModel s)
         {
-            var entity = _mapper.Map<StaffSalary>(vm);
-            entity.ShopId    = _currentUser.ShopId;
-            entity.CreatedBy = _currentUser.UserId;
-            entity.CreatedOn = DateTime.UtcNow;
-            entity.ActiveStatus = Domain.Enums.ActiveStatus.Active;
-            
-            var created = await _repo.AddAsync(entity, ct);
-            return new ApiResponse<Guid>(created.Id);
+            if (!await _db.AppUsers.AnyAsync(u => u.Id == s.StaffUserId, ct))
+                return ApiResponse<Guid>.NotFound("Staff member not found.");
+            if (await _db.StaffSalaries.AnyAsync(x => x.StaffUserId == s.StaffUserId && x.Month == s.Month && x.Year == s.Year, ct))
+                return ApiResponse<Guid>.Conflict($"A salary for {s.Month}/{s.Year} is already recorded for this staff member.");
+            var net = s.BaseSalary + s.Bonus - s.Deduction;
+            if (s.AmountPaid is < 0 || s.AmountPaid > net)
+                return ApiResponse<Guid>.Fail($"Amount paid must be between 0 and the net salary ({net:N2}).");
         }
-        catch (Exception ex)
-        {
-            var response = new ApiResponse<Guid>("An error occurred while creating the record.", (int)HttpStatusCode.InternalServerError);
-            response.Errors.Add(ex.InnerException?.Message ?? ex.Message);
-            return response;
-        }
+        return await base.CreateAsync(vm, ct);
     }
 
-    public override async Task<ApiResponse<Guid>> UpdateAsync(
-        TUpdate vm, CancellationToken ct = default)
+    protected override Task BeforeCreateAsync(StaffSalary entity, TCreate vm, CancellationToken ct)
     {
-        try
-        {
-            var entity = await _repo.GetByIdAsync(vm.Id, ct);
-            if (entity == null) 
-                return new ApiResponse<Guid>("Salary record not found.", (int)HttpStatusCode.NotFound);
-                
-            _mapper.Map(vm, entity);
-            // Recalculate net after partial update
-            entity.NetSalary = entity.BaseSalary + entity.Bonus - entity.Deduction;
-            entity.UpdatedBy = _currentUser.UserId;
-            entity.UpdatedOn = DateTime.UtcNow;
-            
-            await _repo.UpdateAsync(entity, ct);
-            return new ApiResponse<Guid>(vm.Id);
-        }
-        catch (Exception ex)
-        {
-            var response = new ApiResponse<Guid>("An error occurred while updating the record.", (int)HttpStatusCode.InternalServerError);
-            response.Errors.Add(ex.InnerException?.Message ?? ex.Message);
-            return response;
-        }
+        entity.PaidOn = _calendar.UtcNow;
+        entity.Status = FinanceService.SalaryStatusFor(entity.NetSalary, entity.AmountPaid);
+        return Task.CompletedTask;
+    }
+
+    protected override Task BeforeUpdateAsync(StaffSalary entity, TUpdate vm, CancellationToken ct)
+    {
+        entity.NetSalary = entity.BaseSalary + entity.Bonus - entity.Deduction;
+        if (entity.AmountPaid > entity.NetSalary) entity.AmountPaid = entity.NetSalary;
+        entity.Status = FinanceService.SalaryStatusFor(entity.NetSalary, entity.AmountPaid);
+        return Task.CompletedTask;
     }
 }

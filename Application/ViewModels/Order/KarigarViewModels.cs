@@ -10,8 +10,10 @@ public class KarigarWorkQueueViewModel
     public int TotalPending { get; set; }
     public int TotalInProgress { get; set; }
     public int TotalCompletedToday { get; set; }
+    public int TotalRework { get; set; }
     public List<KarigarStageTaskViewModel> PendingTasks { get; set; } = new();
     public List<KarigarStageTaskViewModel> InProgressTasks { get; set; } = new();
+    public List<OrderAlterationViewModel> AlterationTasks { get; set; } = new();
 }
 
 public class KarigarStageTaskViewModel
@@ -24,7 +26,14 @@ public class KarigarStageTaskViewModel
     public GarmentType GarmentType { get; set; }
     public ProductionStage Stage { get; set; }
     public DateTime OrderDeliveryDate { get; set; }
-    public bool IsUrgent => OrderDeliveryDate.Date <= DateTime.Today.AddDays(1);
+    /// <summary>Due today or tomorrow (shop-local), or already late.</summary>
+    public bool IsUrgent { get; set; }
+    public bool IsOverdue { get; set; }
+    public OrderPriority Priority { get; set; }
+    public bool IsRework { get; set; }
+    public string? ReworkReason { get; set; }
+    public int Qty { get; set; }
+    public Dictionary<string, string> Attributes { get; set; } = new();
     public decimal? StagePrice { get; set; }
     public int EstimatedDays { get; set; }
     public string? StyleNotes { get; set; }
@@ -42,9 +51,12 @@ public class KarigarPerformanceSummaryViewModel
     public int TotalCompleted { get; set; }
     public int TotalPending { get; set; }
     public int TotalInProgress { get; set; }
+    public int TotalRework { get; set; }
     public decimal CompletionRate => TotalAssigned > 0
         ? Math.Round((decimal)TotalCompleted / TotalAssigned * 100, 1) : 0;
+    /// <summary>Earned from completed work (ledger earnings), not from assignments.</summary>
     public decimal TotalEarnings { get; set; }
+    public decimal Balance { get; set; }
     public List<StageBreakdownViewModel> StageBreakdown { get; set; } = new();
 }
 

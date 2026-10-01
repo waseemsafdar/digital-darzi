@@ -50,6 +50,8 @@ public class ProvisionShopRequest
     public string? LogoUrl { get; set; }
     public string Currency { get; set; } = "PKR";
     public string CurrencySymbol { get; set; } = "₨";
+    /// <summary>IANA time zone; defaults to Asia/Karachi.</summary>
+    public string? TimeZone { get; set; }
 }
 
 public class ProvisionShopResult
@@ -75,6 +77,9 @@ public class ProvisionSubscriptionRequest
     public DateTime? SubscriptionEndsAt { get; set; }
 
     public string? PlanName { get; set; }
+
+    /// <summary>Optional subscription plan (limits and price). See /api/admin/plans.</summary>
+    public Guid? PlanId { get; set; }
 }
 
 // ── Admin Management Requests ───────────────────────────────────────────────

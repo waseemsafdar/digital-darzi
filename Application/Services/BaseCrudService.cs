@@ -1,17 +1,21 @@
-using System.Net;
 using Application.Common;
 using Application.Common.Models;
 using Application.Interfaces.Repositories;
 using Application.Interfaces.Services;
+using Application.Mappings;
 using Application.ViewModels.Common;
-using AutoMapper;
 using Domain.Entities;
 
 namespace Application.Services;
 
 /// <summary>
-/// Generic base CRUD service — uses AutoMapper for entity↔ViewModel conversions.
-/// Matches MobilePosApi.BaseCrudService pattern.
+/// Generic base CRUD service over a repository and the explicit <see cref="IObjectMapper"/>.
+///
+/// Unexpected exceptions are no longer caught here: they propagate to the global exception
+/// middleware, which logs them and returns a safe message (previously the raw exception text,
+/// including database detail, was copied into the response).
+///
+/// Tenant, branch and audit columns are stamped by the DbContext on save.
 /// </summary>
 public class BaseCrudService<TEntity, TCreate, TUpdate, TDetail>
     : IBaseCrudService<TCreate, TUpdate, TDetail>
@@ -21,9 +25,12 @@ public class BaseCrudService<TEntity, TCreate, TUpdate, TDetail>
     where TDetail : class, IBaseCrudViewModel, new()
 {
     protected readonly IBaseRepository<TEntity> _repo;
-    protected readonly IMapper _mapper;
+    protected readonly IObjectMapper _mapper;
 
-    public BaseCrudService(IBaseRepository<TEntity> repo, IMapper mapper)
+    /// <summary>Human-readable entity name used in "not found" messages.</summary>
+    protected virtual string EntityName => "Record";
+
+    public BaseCrudService(IBaseRepository<TEntity> repo, IObjectMapper mapper)
     {
         _repo = repo;
         _mapper = mapper;
@@ -31,91 +38,54 @@ public class BaseCrudService<TEntity, TCreate, TUpdate, TDetail>
 
     public virtual async Task<ApiResponse<TDetail>> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
-        try
-        {
-            var entity = await _repo.GetByIdAsync(id, ct);
-            if (entity == null)
-                return new ApiResponse<TDetail>("Record not found.", (int)HttpStatusCode.NotFound);
-            return new ApiResponse<TDetail>(_mapper.Map<TDetail>(entity));
-        }
-        catch (Exception ex)
-        {
-            var response = new ApiResponse<TDetail>("An error occurred while retrieving the record.", (int)HttpStatusCode.InternalServerError);
-            response.Errors.Add(ex.InnerException?.Message ?? ex.Message);
-            return response;
-        }
+        var entity = await _repo.GetByIdAsync(id, ct);
+        return entity == null
+            ? ApiResponse<TDetail>.NotFound($"{EntityName} not found.")
+            : ApiResponse<TDetail>.Ok(_mapper.Map<TDetail>(entity));
     }
 
     public virtual async Task<ApiResponse<PaginatedResultModel<TDetail>>> GetAllAsync(IBaseSearchModel search, CancellationToken ct = default)
     {
-        try
-        {
-            var paged = await _repo.GetPagedAsync(search, ct);
-            var items = _mapper.Map<IEnumerable<TDetail>>(paged.Items);
-            var result = new PaginatedResultModel<TDetail>(items, search.PageNumber, search.PageSize, paged.TotalCount);
-            return new ApiResponse<PaginatedResultModel<TDetail>>(result);
-        }
-        catch (Exception ex)
-        {
-            var response = new ApiResponse<PaginatedResultModel<TDetail>>("An error occurred while retrieving records.", (int)HttpStatusCode.InternalServerError);
-            response.Errors.Add(ex.InnerException?.Message ?? ex.Message);
-            return response;
-        }
+        var (page, size) = Paging.Normalize(search.PageNumber, search.PageSize, 10);
+        search.PageNumber = page;
+        if (!search.DisablePagination) search.PageSize = size;
+
+        var paged = await _repo.GetPagedAsync(search, ct);
+        var items = paged.Items.Select(e => _mapper.Map<TDetail>(e)).ToList();
+        var pageSize = search.DisablePagination ? paged.TotalCount : search.PageSize;
+        return ApiResponse<PaginatedResultModel<TDetail>>.Ok(
+            new PaginatedResultModel<TDetail>(items, search.PageNumber, pageSize, paged.TotalCount));
     }
 
     public virtual async Task<ApiResponse<Guid>> CreateAsync(TCreate vm, CancellationToken ct = default)
     {
-        try
-        {
-            var entity = _mapper.Map<TEntity>(vm);
-            
-            if (vm.GetType().GetProperty("ActiveStatus") == null && entity is BaseDBModel baseModel)
-            {
-                baseModel.ActiveStatus = Domain.Enums.ActiveStatus.Active;
-            }
-                
-            var created = await _repo.AddAsync(entity, ct);
-            return new ApiResponse<Guid>(created.Id);
-        }
-        catch (Exception ex)
-        {
-            var response = new ApiResponse<Guid>("An error occurred while creating the record.", (int)HttpStatusCode.InternalServerError);
-            response.Errors.Add(ex.InnerException?.Message ?? ex.Message);
-            return response;
-        }
+        var entity = _mapper.Map<TEntity>(vm);
+        await BeforeCreateAsync(entity, vm, ct);
+        var created = await _repo.AddAsync(entity, ct);
+        return ApiResponse<Guid>.Ok(created.Id);
     }
 
     public virtual async Task<ApiResponse<Guid>> UpdateAsync(TUpdate vm, CancellationToken ct = default)
     {
-        try
-        {
-            var entity = await _repo.GetByIdAsync(vm.Id, ct);
-            if (entity == null)
-                return new ApiResponse<Guid>("Record not found.", (int)HttpStatusCode.NotFound);
-            _mapper.Map(vm, entity);
-            await _repo.UpdateAsync(entity, ct);
-            return new ApiResponse<Guid>(vm.Id);
-        }
-        catch (Exception ex)
-        {
-            var response = new ApiResponse<Guid>("An error occurred while updating the record.", (int)HttpStatusCode.InternalServerError);
-            response.Errors.Add(ex.InnerException?.Message ?? ex.Message);
-            return response;
-        }
+        var entity = await _repo.GetByIdAsync(vm.Id, ct);
+        if (entity == null) return ApiResponse<Guid>.NotFound($"{EntityName} not found.");
+        _mapper.Map(vm, entity);
+        await BeforeUpdateAsync(entity, vm, ct);
+        await _repo.UpdateAsync(entity, ct);
+        return ApiResponse<Guid>.Ok(vm.Id);
     }
 
     public virtual async Task<ApiResponse<string>> DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        try
-        {
-            await _repo.DeleteAsync(id, ct);
-            return new ApiResponse<string>(id.ToString(), "Deleted successfully.");
-        }
-        catch (Exception ex)
-        {
-            var response = new ApiResponse<string>("An error occurred while deleting the record.", (int)HttpStatusCode.InternalServerError);
-            response.Errors.Add(ex.InnerException?.Message ?? ex.Message);
-            return response;
-        }
+        var entity = await _repo.GetByIdAsync(id, ct);
+        if (entity == null) return ApiResponse<string>.NotFound($"{EntityName} not found.");
+        await _repo.DeleteAsync(id, ct);
+        return ApiResponse<string>.Ok(id.ToString(), "Deleted successfully.");
     }
+
+    /// <summary>Hook for derived services to set derived fields or run checks before insert.</summary>
+    protected virtual Task BeforeCreateAsync(TEntity entity, TCreate vm, CancellationToken ct) => Task.CompletedTask;
+
+    /// <summary>Hook for derived services to recompute derived fields before update.</summary>
+    protected virtual Task BeforeUpdateAsync(TEntity entity, TUpdate vm, CancellationToken ct) => Task.CompletedTask;
 }

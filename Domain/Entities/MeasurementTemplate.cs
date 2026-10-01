@@ -2,7 +2,7 @@ using Domain.Enums;
 
 namespace Domain.Entities;
 
-public class MeasurementTemplate : BaseDBModel
+public class MeasurementTemplate : BaseDBModel, IShopScoped
 {
     public Guid ShopId { get; set; }
     // TenantId = Guid.Empty → system seed record

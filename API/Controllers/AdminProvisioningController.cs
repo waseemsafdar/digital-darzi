@@ -1,5 +1,7 @@
 using Application.Interfaces.Services;
 using Application.ViewModels.Admin;
+using Domain.Enums;
+using Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,10 +22,12 @@ namespace API.Controllers;
 public class AdminProvisioningController : BaseController
 {
     private readonly IAdminProvisioningService _adminService;
+    private readonly IBillingService _billing;
 
-    public AdminProvisioningController(IAdminProvisioningService adminService)
+    public AdminProvisioningController(IAdminProvisioningService adminService, IBillingService billing)
     {
         _adminService = adminService;
+        _billing = billing;
     }
 
     // ── Step 1: Provision Owner ─────────────────────────────────────────────
@@ -108,4 +112,41 @@ public class AdminProvisioningController : BaseController
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
         => ReturnProcessedResponse(await _adminService.GetAllShopsAsync(page, pageSize, ct));
+
+    // ── Plans & billing ─────────────────────────────────────────────────────
+
+    [HttpGet("plans")]
+    public async Task<IActionResult> GetPlans([FromQuery] bool includeInactive = true, CancellationToken ct = default)
+        => ReturnProcessedResponse(await _billing.GetPlansAsync(includeInactive, ct));
+
+    [HttpPost("plans")]
+    public async Task<IActionResult> CreatePlan([FromBody] SaveSubscriptionPlanViewModel vm, CancellationToken ct)
+        => ReturnProcessedResponse(await _billing.CreatePlanAsync(vm, ct));
+
+    [HttpPut("plans/{id:guid}")]
+    public async Task<IActionResult> UpdatePlan(Guid id, [FromBody] SaveSubscriptionPlanViewModel vm, CancellationToken ct)
+        => ReturnProcessedResponse(await _billing.UpdatePlanAsync(id, vm, ct));
+
+    /// <summary>Assigns a plan (and its limits) to a shop. Branches added later inherit it.</summary>
+    [HttpPut("shops/{shopId:guid}/plan")]
+    public async Task<IActionResult> AssignPlan(Guid shopId, [FromBody] AssignPlanViewModel vm, CancellationToken ct)
+        => ReturnProcessedResponse(await _billing.AssignPlanAsync(shopId, vm.PlanId, ct));
+
+    [HttpGet("invoices")]
+    public async Task<IActionResult> GetInvoices([FromQuery] Guid? tenantId, [FromQuery] InvoiceStatus? status,
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
+        => ReturnProcessedResponse(await _billing.GetInvoicesAsync(tenantId, status, page, pageSize, ct));
+
+    [HttpPost("invoices")]
+    public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceViewModel vm, CancellationToken ct)
+        => ReturnProcessedResponse(await _billing.CreateInvoiceAsync(vm, ct));
+
+    /// <summary>Records payment of an invoice: the subscription becomes Active and runs to the end of the invoiced period.</summary>
+    [HttpPost("invoices/{id:guid}/paid")]
+    public async Task<IActionResult> MarkInvoicePaid(Guid id, [FromBody] MarkInvoicePaidViewModel vm, CancellationToken ct)
+        => ReturnProcessedResponse(await _billing.MarkInvoicePaidAsync(id, vm, ct));
+
+    [HttpPost("invoices/{id:guid}/void")]
+    public async Task<IActionResult> VoidInvoice(Guid id, CancellationToken ct)
+        => ReturnProcessedResponse(await _billing.VoidInvoiceAsync(id, ct));
 }
