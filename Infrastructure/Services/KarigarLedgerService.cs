@@ -59,6 +59,8 @@ public sealed class KarigarLedgerService : IKarigarLedgerService
     {
         if (vm.KarigarId.HasValue && !await _db.AppUsers.AnyAsync(u => u.Id == vm.KarigarId, ct))
             return ApiResponse<KarigarRateViewModel>.NotFound("Karigar not found.");
+        var garmentError = (await GarmentTypeCatalogue.LoadAsync(_db, ct)).CheckUsable((int)vm.GarmentType, allowHidden: true);
+        if (garmentError != null) return ApiResponse<KarigarRateViewModel>.Fail(garmentError);
 
         var row = await _db.KarigarRates.FirstOrDefaultAsync(r =>
             r.KarigarId == vm.KarigarId && r.GarmentType == vm.GarmentType && r.Stage == vm.Stage, ct);
@@ -111,6 +113,7 @@ public sealed class KarigarLedgerService : IKarigarLedgerService
             ?? await ResolveStagePriceAsync(log.KarigarId, item.GarmentType, log.Stage, item.Qty, ct)
             ?? 0;
         if (amount <= 0) return;
+        var garmentName = (await GarmentTypeCatalogue.LoadAsync(_db, ct)).NameOf(item.GarmentType);
 
         _db.KarigarLedgerEntries.Add(new KarigarLedgerEntry
         {
@@ -122,7 +125,7 @@ public sealed class KarigarLedgerService : IKarigarLedgerService
             OrderItemId  = item.Id,
             Stage        = log.Stage,
             StageLogId   = log.Id,
-            Notes        = $"{log.Stage} × {item.Qty} {item.GarmentType}"
+            Notes        = $"{log.Stage} × {item.Qty} {garmentName}"
         });
     }
 

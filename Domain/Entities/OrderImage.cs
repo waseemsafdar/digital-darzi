@@ -6,6 +6,7 @@ public class Attachment : BaseDBModel
 {
     public Guid? EntityId { get; set; }
     public AttachmentType AttachmentType { get; set; } = AttachmentType.Order;
+    public AttachmentKind Kind { get; set; } = AttachmentKind.General;
     public string ImageUrl { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? FileName { get; set; }

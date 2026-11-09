@@ -62,7 +62,8 @@ public class ReportingService : IReportingService
             .Select(g => new
             {
                 Active       = g.Count(),
-                Overdue      = g.Count(o => o.DeliveryDate < today),
+                // Ready but not collected is waiting for pickup, not late (matches the delivery board).
+                Overdue      = g.Count(o => o.DeliveryDate < today && o.Status != OrderStatus.ReadyToDeliver && o.Status != OrderStatus.PartiallyDelivered),
                 DueToday     = g.Count(o => o.DeliveryDate >= today && o.DeliveryDate < tomorrow),
                 DueTomorrow  = g.Count(o => o.DeliveryDate >= tomorrow && o.DeliveryDate < tomorrow.AddDays(1)),
                 Ready        = g.Count(o => o.Status == OrderStatus.ReadyToDeliver || o.Status == OrderStatus.PartiallyDelivered),
@@ -172,6 +173,8 @@ public class ReportingService : IReportingService
             })
             .OrderByDescending(g => g.Revenue)
             .ToListAsync(ct);
+        var garments = await GarmentTypeCatalogue.LoadAsync(_db, ct);
+        foreach (var g in byGarment) g.GarmentName = garments.NameOf(g.GarmentType);
 
         var byMethod = await payments.Where(p => !p.IsRefund)
             .GroupBy(p => p.PaymentMethod)
@@ -329,7 +332,8 @@ public class ReportingService : IReportingService
         int Get(OrderStatus s) => statusCounts.FirstOrDefault(x => x.Status == s)?.Count ?? 0;
 
         var today = await _calendar.TodayAsync(ct);
-        var overdue = await Q<Order>(tenantWide).CountAsync(o => o.DeliveryDate < today && !Closed.Contains(o.Status), ct);
+        var overdue = await Q<Order>(tenantWide).CountAsync(o => o.DeliveryDate < today && !Closed.Contains(o.Status)
+            && o.Status != OrderStatus.ReadyToDeliver && o.Status != OrderStatus.PartiallyDelivered, ct);
 
         return ApiResponse<OrderStatusReportViewModel>.Ok(new OrderStatusReportViewModel
         {

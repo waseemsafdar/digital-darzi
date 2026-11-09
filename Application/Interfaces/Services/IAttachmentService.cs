@@ -8,6 +8,7 @@ public class AttachmentViewModel
 {
     public Guid Id { get; set; }
     public AttachmentType AttachmentType { get; set; }
+    public AttachmentKind Kind { get; set; }
     public Guid EntityId { get; set; }
     public string FileName { get; set; } = string.Empty;
     public string ContentType { get; set; } = string.Empty;
@@ -26,7 +27,8 @@ public sealed record AttachmentFile(Stream Content, string ContentType, string F
 /// </summary>
 public interface IAttachmentService
 {
-    Task<ApiResponse<AttachmentViewModel>> UploadAsync(AttachmentType type, Guid entityId, IFormFile file, string? description, CancellationToken ct = default);
+    Task<ApiResponse<AttachmentViewModel>> UploadAsync(AttachmentType type, Guid entityId, IFormFile file, string? description,
+        AttachmentKind kind = AttachmentKind.General, CancellationToken ct = default);
     Task<ApiResponse<List<AttachmentViewModel>>> ListAsync(AttachmentType type, Guid entityId, CancellationToken ct = default);
     Task<ApiResponse<object>> DeleteAsync(Guid attachmentId, CancellationToken ct = default);
     Task<AttachmentFile?> OpenAsync(Guid attachmentId, CancellationToken ct = default);

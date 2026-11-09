@@ -88,6 +88,7 @@ public class OrderService : IOrderService
         var o = await _repo.GetDetailAsync(id, ct);
         if (o == null) return ApiResponse<OrderReceiptViewModel>.NotFound("Order not found.");
         var shop = await _shops.GetAsync(_currentUser.ShopId, ct);
+        var garments = await GarmentTypeCatalogue.LoadAsync(_db, ct);
 
         return ApiResponse<OrderReceiptViewModel>.Ok(new OrderReceiptViewModel
         {
@@ -101,7 +102,7 @@ public class OrderService : IOrderService
             CustomerPhone  = o.CustomerPhone,
             Lines = o.Items.Select(i => new OrderReceiptLineViewModel
             {
-                Description = i.FabricCharge > 0 ? $"{i.GarmentType} (incl. fabric {i.FabricCharge:N0})" : i.GarmentType.ToString(),
+                Description = i.FabricCharge > 0 ? $"{garments.NameOf(i.GarmentType)} (incl. fabric {i.FabricCharge:N0})" : garments.NameOf(i.GarmentType),
                 Qty         = i.Qty,
                 UnitPrice   = i.Price,
                 LineTotal   = OrderMath.LineTotal(i.Price, i.Qty, i.FabricCharge)
@@ -128,6 +129,11 @@ public class OrderService : IOrderService
 
         var limit = await _limits.CheckAsync(PlanLimit.OrdersPerMonth, ct);
         if (limit != null) return ApiResponse<OrderDetailViewModel>.PaymentRequired(limit);
+
+        // Garment types are per shop: the code must be one of this shop's visible types.
+        var garments = await GarmentTypeCatalogue.LoadAsync(_db, ct);
+        var garmentError = vm.Items.Select(i => garments.CheckUsable((int)i.GarmentType)).FirstOrDefault(e => e != null);
+        if (garmentError != null) return ApiResponse<OrderDetailViewModel>.Fail(garmentError);
 
         // Karigars referenced by the stage plan must exist in this tenant.
         var karigarIds = vm.Items.SelectMany(i => i.StageAssignments ?? new())
@@ -183,12 +189,14 @@ public class OrderService : IOrderService
             ActiveStatus        = ActiveStatus.Active
         };
 
+        var position = 0;
         foreach (var itemVm in vm.Items)
         {
             var item = new OrderItem
             {
                 Id                = Guid.NewGuid(),
                 OrderId           = order.Id,
+                CreatedOn         = now.AddTicks(10 * position++),   // 1 µs apart: keeps request order
                 GarmentType       = itemVm.GarmentType,
                 FabricDescription = itemVm.FabricDescription,
                 FabricColor       = itemVm.FabricColor,
@@ -395,6 +403,7 @@ public class OrderService : IOrderService
     {
         var catalogue = await _db.GarmentAttributes.AsNoTracking().ToListAsync(ct);
         if (catalogue.Count == 0) return null;
+        var garments = await GarmentTypeCatalogue.LoadAsync(_db, ct);
 
         foreach (var item in items)
         {
@@ -415,7 +424,7 @@ public class OrderService : IOrderService
             var missing = catalogue.Where(a => a.IsRequired && (a.GarmentType == null || a.GarmentType == item.GarmentType)
                     && !given.Keys.Any(k => string.Equals(k, a.Name, StringComparison.OrdinalIgnoreCase)))
                 .Select(a => a.Name).ToList();
-            if (missing.Count > 0) return $"{item.GarmentType} needs: {string.Join(", ", missing)}.";
+            if (missing.Count > 0) return $"{garments.NameOf(item.GarmentType)} needs: {string.Join(", ", missing)}.";
         }
         return null;
     }

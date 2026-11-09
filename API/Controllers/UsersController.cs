@@ -41,6 +41,12 @@ public class UsersController : BaseController
     [HasPermission(Permissions.UsersManage)]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken ct) => ReturnProcessedResponse(await _service.DeactivateAsync(id, ct));
 
+    /// <summary>Owner sets a staff member's sign-in PIN. Clears lockout and signs them out elsewhere.</summary>
+    [HttpPost("{id}/reset-pin")]
+    [HasPermission(Permissions.UsersManage)]
+    public async Task<IActionResult> ResetPin(Guid id, [FromBody] ResetPinViewModel vm, CancellationToken ct)
+        => ReturnProcessedResponse(await _service.ResetPinAsync(id, vm.NewPin, ct));
+
     [HttpPut("{id}/shops")]
     [HasPermission(Permissions.UsersManage)]
     public async Task<IActionResult> AssignShops(Guid id, [FromBody] List<Guid> shopIds, CancellationToken ct)

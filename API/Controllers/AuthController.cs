@@ -14,7 +14,22 @@ public class AuthController : BaseController
 {
     private readonly IAuthService _authService;
 
-    public AuthController(IAuthService authService) => _authService = authService;
+    private readonly Infrastructure.Services.ISignupService _signup;
+
+    public AuthController(IAuthService authService, Infrastructure.Services.ISignupService signup)
+    {
+        _authService = authService;
+        _signup = signup;
+    }
+
+    /// <summary>
+    /// Self-service sign-up: creates the business, its first shop and the Owner, starts the free
+    /// trial and returns tokens like login. Rate-limited with the other auth calls.
+    /// </summary>
+    [HttpPost("register")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Register([FromBody] Infrastructure.Services.SignupRequest request, CancellationToken ct)
+        => ReturnProcessedResponse(await _signup.RegisterAsync(request, ct));
 
     /// <summary>Login via email+password or phone+PIN. Returns an access token and a rotating refresh token.</summary>
     [HttpPost("login")]

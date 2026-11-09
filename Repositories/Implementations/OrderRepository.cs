@@ -18,6 +18,13 @@ public class OrderRepository : BaseRepository<Order>, IOrderRepository
 
     private static readonly OrderStatus[] Closed = { OrderStatus.Delivered, OrderStatus.Cancelled };
 
+    /// <summary>
+    /// Statuses that are never "late". A ready order past its date is waiting for the customer to
+    /// collect it; the shop has done its part, so it shows under Ready, not Late.
+    /// </summary>
+    private static readonly OrderStatus[] NotLate =
+        { OrderStatus.Delivered, OrderStatus.Cancelled, OrderStatus.ReadyToDeliver, OrderStatus.PartiallyDelivered };
+
     // ── Detail ───────────────────────────────────────────────────────────────
 
     public async Task<OrderDetailViewModel?> GetDetailAsync(Guid id, CancellationToken ct = default)
@@ -149,7 +156,7 @@ public class OrderRepository : BaseRepository<Order>, IOrderRepository
             query = query.Where(o => o.DeliveryDate >= today && o.DeliveryDate < tomorrow);
         }
         if (filter.Overdue == true)
-            query = query.Where(o => o.DeliveryDate < today && !Closed.Contains(o.Status));
+            query = query.Where(o => o.DeliveryDate < today && !NotLate.Contains(o.Status));
 
         var total = await query.CountAsync(ct);
         var items = await ApplySort(query, filter.SortBy, filter.SortDirection)
@@ -183,7 +190,7 @@ public class OrderRepository : BaseRepository<Order>, IOrderRepository
 
     public async Task<List<OrderListViewModel>> GetOverdueAsync(DateTime today, int limit, CancellationToken ct = default)
         => await _db.Orders.AsNoTracking()
-            .Where(o => o.DeliveryDate < today && !Closed.Contains(o.Status))
+            .Where(o => o.DeliveryDate < today && !NotLate.Contains(o.Status))
             .OrderBy(o => o.DeliveryDate)
             .Take(limit)
             .Select(ListProjection)
@@ -202,7 +209,7 @@ public class OrderRepository : BaseRepository<Order>, IOrderRepository
             {
                 DueToday    = g.Count(o => o.DeliveryDate >= today && o.DeliveryDate < tomorrow),
                 DueTomorrow = g.Count(o => o.DeliveryDate >= tomorrow && o.DeliveryDate < dayAfter),
-                Overdue     = g.Count(o => o.DeliveryDate < today),
+                Overdue     = g.Count(o => o.DeliveryDate < today && o.Status != OrderStatus.ReadyToDeliver && o.Status != OrderStatus.PartiallyDelivered),
                 Ready       = g.Count(o => o.Status == OrderStatus.ReadyToDeliver || o.Status == OrderStatus.PartiallyDelivered)
             })
             .FirstOrDefaultAsync(ct);

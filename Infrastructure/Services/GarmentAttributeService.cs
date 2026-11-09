@@ -41,6 +41,7 @@ public sealed class GarmentAttributeService : IGarmentAttributeService
 
     public async Task<ApiResponse<GarmentAttributeViewModel>> CreateAsync(SaveGarmentAttributeViewModel vm, CancellationToken ct = default)
     {
+        if (await GarmentErrorAsync(vm, ct) is { } garmentError) return ApiResponse<GarmentAttributeViewModel>.Fail(garmentError);
         var name = vm.Name.Trim();
         if (await _db.GarmentAttributes.AnyAsync(a => a.GarmentType == vm.GarmentType && a.Name == name, ct))
             return ApiResponse<GarmentAttributeViewModel>.Conflict($"'{name}' already exists for this garment type.");
@@ -55,6 +56,7 @@ public sealed class GarmentAttributeService : IGarmentAttributeService
     {
         var row = await _db.GarmentAttributes.FirstOrDefaultAsync(a => a.Id == id, ct);
         if (row == null) return ApiResponse<GarmentAttributeViewModel>.NotFound("Attribute not found.");
+        if (await GarmentErrorAsync(vm, ct) is { } garmentError) return ApiResponse<GarmentAttributeViewModel>.Fail(garmentError);
         var name = vm.Name.Trim();
         if (await _db.GarmentAttributes.AnyAsync(a => a.Id != id && a.GarmentType == vm.GarmentType && a.Name == name, ct))
             return ApiResponse<GarmentAttributeViewModel>.Conflict($"'{name}' already exists for this garment type.");
@@ -78,6 +80,9 @@ public sealed class GarmentAttributeService : IGarmentAttributeService
         await _setup.SetupNewTenantAsync(_currentUser.TenantId, _currentUser.ShopId, _currentUser.UserId, ct);
         return ApiResponse<object>.Ok(null, "Defaults added where the branch had none.");
     }
+
+    private async Task<string?> GarmentErrorAsync(SaveGarmentAttributeViewModel vm, CancellationToken ct) =>
+        vm.GarmentType is { } g ? (await GarmentTypeCatalogue.LoadAsync(_db, ct)).CheckUsable((int)g, allowHidden: true) : null;
 
     private static void Apply(GarmentAttribute row, SaveGarmentAttributeViewModel vm)
     {

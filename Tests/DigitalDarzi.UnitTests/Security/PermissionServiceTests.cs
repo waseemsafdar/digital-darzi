@@ -149,4 +149,85 @@ public class PermissionServiceTests
     public void Effective_DifferentlyCasedRoleName_DoesNotMatch()
         => PermissionService.Effective("manager", Permissions.OrdersCreate, overrides: Array.Empty<TenantRolePermission>())
             .Should().BeFalse();
+    // ───────────────────────────────────────────────────────────────
+    // A business's own roles ("c_…"): only what was granted, never Owner-only
+    // ───────────────────────────────────────────────────────────────
+
+    private const string ShopOwnRole = AppRoles.CustomPrefix + "6f1c0b8e2d4a4b7f9e3c5a1d2b8e7f60";
+
+    // Rule: a business's own role holds a permission only when a grant row says so.
+    // Why:  own roles have no defaults, so the grant rows are the whole definition of the role.
+    [Fact]
+    public void Effective_OwnRole_GrantedPermission_ReturnsTrue()
+    {
+        var overrides = new[] { Override(ShopOwnRole, Permissions.OrdersCreate, granted: true) };
+
+        PermissionService.Effective(ShopOwnRole, Permissions.OrdersCreate, overrides).Should().BeTrue();
+    }
+
+    // Rule: with no grant row, a business's own role has nothing.
+    // Why:  overrides are loaded per business, so this is also what another business's role
+    //       name sees here: a role claim from elsewhere must resolve to no access at all.
+    [Fact]
+    public void Effective_OwnRole_WithoutGrantRow_ReturnsFalse()
+        => PermissionService.Effective(ShopOwnRole, Permissions.OrdersView, overrides: Array.Empty<TenantRolePermission>())
+            .Should().BeFalse();
+
+    // Rule: a grant row of an Owner-only permission is ignored for a business's own role.
+    // Why:  the same guard as for built-in roles; a hand-edited row must not make a custom
+    //       role able to manage staff or roles.
+    [Fact]
+    public void Effective_OwnRole_NonDelegableGrantIsIgnored()
+    {
+        var overrides = new[] { Override(ShopOwnRole, Permissions.SettingsPermissions, granted: true) };
+
+        PermissionService.Effective(ShopOwnRole, Permissions.SettingsPermissions, overrides).Should().BeFalse();
+    }
+
+    // Rule: a grant row for one own role does not leak to another own role.
+    // Why:  rows are matched by exact role name.
+    [Fact]
+    public void Effective_OwnRole_GrantForAnotherRole_ReturnsFalse()
+    {
+        var overrides = new[] { Override(AppRoles.CustomPrefix + "aaaa", Permissions.OrdersCreate, granted: true) };
+
+        PermissionService.Effective(ShopOwnRole, Permissions.OrdersCreate, overrides).Should().BeFalse();
+    }
+
+    // ───────────────────────────────────────────────────────────────
+    // New built-in roles (2026-11)
+    // ───────────────────────────────────────────────────────────────
+
+    // Rule: the Master (head tailor) can assign and check work but never sees money.
+    // Why:  that separation is the reason the role exists instead of making the master a Manager.
+    [Theory]
+    [InlineData(Permissions.ProductionAssign, true)]
+    [InlineData(Permissions.ProductionQc, true)]
+    [InlineData(Permissions.FinanceView, false)]
+    [InlineData(Permissions.PaymentsRecord, false)]
+    [InlineData(Permissions.UsersView, false)]
+    public void Effective_Master_Defaults(string permission, bool expected)
+        => PermissionService.Effective(AppRoles.Master, permission, overrides: Array.Empty<TenantRolePermission>())
+            .Should().Be(expected);
+
+    // Rule: production worker roles get exactly the karigar's default access.
+    // Why:  the app opens the karigar screens for production work without the order list;
+    //       a cutter or presser must land there and see no money.
+    [Theory]
+    [InlineData(AppRoles.Cutter)]
+    [InlineData(AppRoles.KajButton)]
+    [InlineData(AppRoles.Embroiderer)]
+    [InlineData(AppRoles.Presser)]
+    [InlineData(AppRoles.Helper)]
+    public void Defaults_ProductionWorkerRoles_MatchKarigar(string role)
+        => Permissions.Defaults[role].Should().BeEquivalentTo(Permissions.Defaults[AppRoles.Karigar]);
+
+    // Rule: a new built-in role can be customised per business like the original three.
+    [Fact]
+    public void Effective_NewBuiltInRole_OverrideRevokesDefault()
+    {
+        var overrides = new[] { Override(AppRoles.Salesman, Permissions.OrdersCreate, granted: false) };
+
+        PermissionService.Effective(AppRoles.Salesman, Permissions.OrdersCreate, overrides).Should().BeFalse();
+    }
 }

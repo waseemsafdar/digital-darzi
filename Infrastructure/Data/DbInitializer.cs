@@ -17,7 +17,16 @@ public static class DbInitializer
         "Owner",
         "Manager",
         "Karigar",
-        "Receptionist"
+        "Receptionist",
+        "Master",
+        "Cutter",
+        "KajButton",
+        "Embroiderer",
+        "Presser",
+        "Helper",
+        "Salesman",
+        "Munshi",
+        "Delivery"
     };
 
     /// <summary>Initial SystemAdmin, read from configuration ("Seed:AdminEmail" / "Seed:AdminPassword").</summary>

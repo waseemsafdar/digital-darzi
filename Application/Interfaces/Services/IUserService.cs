@@ -11,6 +11,9 @@ public interface IUserService
     Task<ApiResponse<UserDetailViewModel>> CreateAsync(CreateUserViewModel vm, CancellationToken ct = default);
     Task<ApiResponse<UserDetailViewModel>> UpdateAsync(UpdateUserViewModel vm, CancellationToken ct = default);
     Task<ApiResponse<object>> DeactivateAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>Sets a staff member's PIN (Owner). Clears any lockout and signs them out on other devices.</summary>
+    Task<ApiResponse<object>> ResetPinAsync(Guid id, string newPin, CancellationToken ct = default);
     Task<ApiResponse<object>> AssignShopsAsync(Guid id, List<Guid> shopIds, CancellationToken ct = default);
     Task<ApiResponse<object>> AssignRolesAsync(Guid id, List<Guid> roleIds, CancellationToken ct = default);
     /// <summary>Soft-deletes a user account: marks IsDeleted, locks Identity login, revokes all roles. Owner-only.</summary>

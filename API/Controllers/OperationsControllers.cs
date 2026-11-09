@@ -1,6 +1,7 @@
 using API.Authorization;
 using Application.Common;
 using Application.Interfaces.Services;
+using Application.ViewModels.Admin;
 using Application.ViewModels.Notifications;
 using Application.ViewModels.Operations;
 using Domain.Enums;
@@ -59,15 +60,16 @@ public class AttachmentsController : BaseController
         _                       => (Permissions.OrdersView, Permissions.OrdersEdit)
     };
 
-    /// <summary>Multipart upload: file, entityType (Order=1, Expense=2, Customer=3, OrderItem=4), entityId, description.</summary>
+    /// <summary>Multipart upload: file, entityType (Order=1, Expense=2, Customer=3, OrderItem=4), entityId, description,
+    /// and optional kind (General=0, Design=1 for reference pictures, Fabric=2 for the cloth itself).</summary>
     [HttpPost]
     [RequestSizeLimit(12 * 1024 * 1024)]
     public async Task<IActionResult> Upload([FromForm] AttachmentType entityType, [FromForm] Guid entityId, IFormFile? file,
-        [FromForm] string? description, CancellationToken ct)
+        [FromForm] string? description, [FromForm] AttachmentKind kind, CancellationToken ct)
     {
         if (file == null) return BadRequest(ApiResponse<object>.Fail("Attach a file in the 'file' form field."));
         if (!await HasPermissionAsync(PermissionsFor(entityType).Write)) return Forbidden("You cannot add files here.");
-        return ReturnProcessedResponse(await _service.UploadAsync(entityType, entityId, file, description, ct));
+        return ReturnProcessedResponse(await _service.UploadAsync(entityType, entityId, file, description, kind, ct));
     }
 
     [HttpGet]
@@ -237,6 +239,31 @@ public class BillingController : BaseController
 
     [HttpGet("plans")]
     public async Task<IActionResult> Plans(CancellationToken ct) => ReturnProcessedResponse(await _service.GetPlansAsync(false, ct));
+
+    /// <summary>Paid plans, billing periods with their discount, and the accounts to pay into.</summary>
+    [HttpGet("options")]
+    public async Task<IActionResult> Options(CancellationToken ct) => ReturnProcessedResponse(await _service.GetOptionsAsync(ct));
+
+    /// <summary>Choose a plan and period. Creates the invoice to pay (replacing an unpaid earlier choice).</summary>
+    [HttpPost("checkout")]
+    public async Task<IActionResult> Checkout([FromBody] CheckoutViewModel vm, CancellationToken ct)
+        => ReturnProcessedResponse(await _service.CheckoutAsync(vm, ct));
+
+    /// <summary>Multipart: optional file (receipt photo or PDF), reference (transaction id), paidVia, note.</summary>
+    [HttpPost("invoices/{id:guid}/proof")]
+    [RequestSizeLimit(12 * 1024 * 1024)]
+    public async Task<IActionResult> SubmitProof(Guid id, IFormFile? file, [FromForm] string? reference, [FromForm] string? paidVia,
+        [FromForm] string? note, CancellationToken ct)
+        => ReturnProcessedResponse(await _service.SubmitProofAsync(id, file, reference, paidVia, note, ct));
+
+    [HttpGet("invoices/{id:guid}/proof")]
+    public async Task<IActionResult> Proof(Guid id, CancellationToken ct)
+    {
+        var file = await _service.OpenProofAsync(id, CurrentTenantId, ct);
+        return file == null ? NotFound(ApiResponse<object>.NotFound("No receipt on this invoice.")) : File(file.Content, file.ContentType, file.FileName);
+    }
+
+    private Guid CurrentTenantId => Guid.TryParse(User.FindFirst("tenantId")?.Value, out var id) ? id : Guid.Empty;
 }
 
 /// <summary>Per-tenant role permissions. The Owner can grant or revoke delegable permissions for Manager, Receptionist and Karigar.</summary>

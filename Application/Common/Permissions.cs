@@ -56,8 +56,13 @@ public static class Permissions
     /// <summary>Roles whose permissions an Owner may customise.</summary>
     public static readonly IReadOnlySet<string> CustomisableRoles = new HashSet<string>
     {
-        AppRoles.Manager, AppRoles.Receptionist, AppRoles.Karigar
+        AppRoles.Manager, AppRoles.Receptionist, AppRoles.Karigar,
+        AppRoles.Master, AppRoles.Cutter, AppRoles.KajButton, AppRoles.Embroiderer, AppRoles.Presser,
+        AppRoles.Helper, AppRoles.Salesman, AppRoles.Munshi, AppRoles.Delivery
     };
+
+    /// <summary>What every production worker role gets: their own jobs, in the karigar app.</summary>
+    private static HashSet<string> ProductionWorker() => new() { OrdersView, ProductionWork, MeasurementsView };
 
     private static readonly string[] All =
     {
@@ -98,6 +103,39 @@ public static class Permissions
             [AppRoles.Karigar] = new HashSet<string>
             {
                 OrdersView, ProductionWork, MeasurementsView
+            },
+
+            // Head tailor: runs the workshop floor but never sees money or staff.
+            [AppRoles.Master] = new HashSet<string>
+            {
+                OrdersView, OrdersList, OrdersEdit, OrdersStatus, AlterationsManage,
+                ProductionAssign, ProductionWork, ProductionQc, CustomersView,
+                MeasurementsView, MeasurementsEdit, MeasurementsConfigure, KarigarViewAll
+            },
+
+            [AppRoles.Cutter]      = ProductionWorker(),
+            [AppRoles.KajButton]   = ProductionWorker(),
+            [AppRoles.Embroiderer] = ProductionWorker(),
+            [AppRoles.Presser]     = ProductionWorker(),
+            [AppRoles.Helper]      = ProductionWorker(),
+
+            // Counter: the receptionist plus taking and editing orders.
+            [AppRoles.Salesman] = new HashSet<string>
+            {
+                OrdersView, OrdersList, OrdersCreate, OrdersEdit, OrdersDeliver, PaymentsRecord,
+                CustomersView, CustomersEdit, MeasurementsView, MeasurementsEdit, InventoryView, CashManage
+            },
+
+            // Accounts: money in and out, no order or production changes.
+            [AppRoles.Munshi] = new HashSet<string>
+            {
+                OrdersView, OrdersList, PaymentsRecord, CustomersView, FinanceView, FinanceManage,
+                ReportsView, KarigarViewAll, KarigarPayouts, InventoryView, CashManage
+            },
+
+            [AppRoles.Delivery] = new HashSet<string>
+            {
+                OrdersView, OrdersList, OrdersDeliver, PaymentsRecord, CustomersView
             },
 
             // Platform operator: keeps the cross-tenant reach it had before (reports, karigar

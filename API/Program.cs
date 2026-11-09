@@ -123,6 +123,8 @@ builder.Services.AddScoped<IShopSettingsCache, ShopSettingsCache>();
 builder.Services.AddScoped<IBusinessCalendar, BusinessCalendar>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IPlanLimitService, PlanLimitService>();
+builder.Services.AddScoped<ISubscriptionResolver, SubscriptionResolver>();
+builder.Services.AddScoped<ISignupService, SignupService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITenantSetupService, TenantSetupService>();
 builder.Services.AddScoped(typeof(IShopService<,,>), typeof(ShopService<,,>));
@@ -140,6 +142,8 @@ builder.Services.AddScoped<IKarigarLedgerService, KarigarLedgerService>();
 builder.Services.AddScoped<IReportingService, ReportingService>();
 builder.Services.AddScoped<IAttachmentService, AttachmentService>();
 builder.Services.AddScoped<IGarmentAttributeService, GarmentAttributeService>();
+builder.Services.AddScoped<IGarmentTypeService, GarmentTypeService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<ICashService, CashService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
@@ -163,6 +167,7 @@ builder.Services.AddScoped<IStaffAttendanceRepository, StaffAttendanceRepository
 
 // ── Files ────────────────────────────────────────────────────────────────
 builder.Services.Configure<FileStorageOptions>(config.GetSection(FileStorageOptions.Section));
+builder.Services.Configure<BillingOptions>(config.GetSection(BillingOptions.Section));
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 
 // ── Notifications (outbox + background delivery) ─────────────────────────
@@ -181,6 +186,7 @@ if (config.GetValue("Notifications:RemindersEnabled", true))
 
 // ── Controllers, validation, JSON ────────────────────────────────────────
 builder.Services.AddValidatorsFromAssemblyContaining<CreateOrderValidator>();
+builder.Services.AddValidatorsFromAssemblyContaining<SignupRequestValidator>();
 builder.Services.AddScoped<ValidationFilter>();
 builder.Services.AddControllers(opts =>
     {

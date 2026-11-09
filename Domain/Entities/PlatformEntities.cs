@@ -51,6 +51,13 @@ public class SubscriptionPlan
     public int TrialDays { get; set; } = 14;
     public bool IsActive { get; set; } = true;
     public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
+
+    /// <summary>The plan a shop falls back to when its trial or paid period ends (instead of being locked out).</summary>
+    public bool IsFreeTier { get; set; }
+    /// <summary>Order photos (design and fabric) can be uploaded.</summary>
+    public bool IncludesPhotos { get; set; } = true;
+    /// <summary>Revenue, customer and staff reports are available.</summary>
+    public bool IncludesReports { get; set; } = true;
 }
 
 /// <summary>Invoice the platform raises to a tenant for a subscription period.</summary>
@@ -71,6 +78,22 @@ public class TenantInvoice
     public PaymentMethod? PaymentMethod { get; set; }
     public string? PaymentReference { get; set; }
     public string? Notes { get; set; }
+
+    /// <summary>Raised by the Owner from the app (choose a plan), rather than by the platform admin.</summary>
+    public bool IsSelfService { get; set; }
+
+    // Proof of payment sent by the Owner, checked by the platform admin.
+    public InvoiceReviewStatus ReviewStatus { get; set; } = InvoiceReviewStatus.None;
+    public string? ProofStorageKey { get; set; }
+    public string? ProofContentType { get; set; }
+    public string? ProofFileName { get; set; }
+    /// <summary>Transaction id the Owner typed from the JazzCash / Easypaisa / bank receipt.</summary>
+    public string? ProofReference { get; set; }
+    /// <summary>How the Owner says they paid, e.g. "JazzCash".</summary>
+    public string? ProofPaidVia { get; set; }
+    public string? ProofNote { get; set; }
+    public DateTime? ProofSubmittedAt { get; set; }
+    public string? RejectReason { get; set; }
 }
 
 /// <summary>Per-tenant override of the default role → permission map.</summary>
@@ -81,6 +104,29 @@ public class TenantRolePermission
     public string RoleName { get; set; } = string.Empty;
     public string Permission { get; set; } = string.Empty;
     public bool Granted { get; set; }
+    public DateTime UpdatedOn { get; set; }
+    public Guid UpdatedBy { get; set; }
+}
+
+/// <summary>
+/// A business's settings for one sign-in role. For a built-in role it stores only a rename or the
+/// hidden flag. For the business's own role (<see cref="IsCustom"/>) it is the role itself; its
+/// permissions are <see cref="TenantRolePermission"/> rows with the same RoleName.
+/// </summary>
+public class ShopRole
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid TenantId { get; set; }
+    /// <summary>The sign-in role name (built-in name, or "c_…" for the business's own role).</summary>
+    public string RoleName { get; set; } = string.Empty;
+    public Guid IdentityRoleId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsCustom { get; set; }
+    /// <summary>Not offered when adding staff. People who already hold it keep it.</summary>
+    public bool IsHidden { get; set; }
+    public DateTime CreatedOn { get; set; }
+    public Guid CreatedBy { get; set; }
     public DateTime UpdatedOn { get; set; }
     public Guid UpdatedBy { get; set; }
 }

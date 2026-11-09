@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.Interfaces.Services;
 using Application.ViewModels.Admin;
 using Domain.Enums;
@@ -132,10 +133,24 @@ public class AdminProvisioningController : BaseController
     public async Task<IActionResult> AssignPlan(Guid shopId, [FromBody] AssignPlanViewModel vm, CancellationToken ct)
         => ReturnProcessedResponse(await _billing.AssignPlanAsync(shopId, vm.PlanId, ct));
 
+    /// <summary>review=1 lists payments Owners sent that are waiting to be checked.</summary>
     [HttpGet("invoices")]
     public async Task<IActionResult> GetInvoices([FromQuery] Guid? tenantId, [FromQuery] InvoiceStatus? status,
-        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
-        => ReturnProcessedResponse(await _billing.GetInvoicesAsync(tenantId, status, page, pageSize, ct));
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] InvoiceReviewStatus? review = null, CancellationToken ct = default)
+        => ReturnProcessedResponse(await _billing.GetInvoicesAsync(tenantId, status, page, pageSize, ct, review));
+
+    /// <summary>The receipt photo or PDF the Owner sent.</summary>
+    [HttpGet("invoices/{id:guid}/proof")]
+    public async Task<IActionResult> GetProof(Guid id, CancellationToken ct)
+    {
+        var file = await _billing.OpenProofAsync(id, null, ct);
+        return file == null ? NotFound(ApiResponse<object>.NotFound("No receipt on this invoice.")) : File(file.Content, file.ContentType, file.FileName);
+    }
+
+    /// <summary>Sends the payment back to the Owner with a reason; the invoice stays unpaid.</summary>
+    [HttpPost("invoices/{id:guid}/reject")]
+    public async Task<IActionResult> RejectProof(Guid id, [FromBody] RejectProofViewModel vm, CancellationToken ct)
+        => ReturnProcessedResponse(await _billing.RejectProofAsync(id, vm.Reason, ct));
 
     [HttpPost("invoices")]
     public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceViewModel vm, CancellationToken ct)

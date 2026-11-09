@@ -53,7 +53,7 @@ public class CreateOrderItemValidator : AbstractValidator<CreateOrderItemViewMod
 {
     public CreateOrderItemValidator()
     {
-        RuleFor(x => x.GarmentType).IsInEnum();
+        RuleFor(x => (int)x.GarmentType).GreaterThan(0).WithName("GarmentType");
         RuleFor(x => x.Qty).InclusiveBetween(1, 500);
         RuleFor(x => x.Price).Money();
         RuleFor(x => x.FabricCharge).Money();
@@ -251,12 +251,32 @@ public class CreateTemplateValidator : AbstractValidator<CreateTemplateViewModel
     }
 }
 
+public class CreateGarmentTypeValidator : AbstractValidator<CreateGarmentTypeViewModel>
+{
+    public CreateGarmentTypeValidator() => RuleFor(x => x.Name).NotEmpty().MaximumLength(60);
+}
+
+public class UpdateGarmentTypeValidator : AbstractValidator<UpdateGarmentTypeViewModel>
+{
+    public UpdateGarmentTypeValidator() => RuleFor(x => x.Name).NotEmpty().MaximumLength(60);
+}
+
+public class ReorderGarmentTypesValidator : AbstractValidator<ReorderGarmentTypesViewModel>
+{
+    public ReorderGarmentTypesValidator()
+    {
+        RuleFor(x => x.Codes).NotEmpty();
+        RuleFor(x => x.Codes.Count).LessThanOrEqualTo(200);
+        RuleFor(x => x.Codes).Must(c => c.Distinct().Count() == c.Count).WithMessage("Each garment type can appear once.");
+    }
+}
+
 public class SaveGarmentAttributeValidator : AbstractValidator<SaveGarmentAttributeViewModel>
 {
     public SaveGarmentAttributeValidator()
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
-        RuleFor(x => x.GarmentType!.Value).IsInEnum().When(x => x.GarmentType.HasValue).WithName("GarmentType");
+        RuleFor(x => (int)x.GarmentType!.Value).GreaterThan(0).When(x => x.GarmentType.HasValue).WithName("GarmentType");
         RuleFor(x => x.Options.Count).LessThanOrEqualTo(50);
     }
 }
@@ -345,13 +365,45 @@ public class UpsertKarigarRateValidator : AbstractValidator<UpsertKarigarRateVie
 {
     public UpsertKarigarRateValidator()
     {
-        RuleFor(x => x.GarmentType).IsInEnum();
+        RuleFor(x => (int)x.GarmentType).GreaterThan(0).WithName("GarmentType");
         RuleFor(x => x.Stage).IsInEnum();
         RuleFor(x => x.Rate).Money();
     }
 }
 
 // ── Users, shops, platform ──────────────────────────────────────────────────
+
+public class CheckoutValidator : AbstractValidator<CheckoutViewModel>
+{
+    public CheckoutValidator()
+    {
+        RuleFor(x => x.PlanId).NotEmpty();
+        RuleFor(x => x.Months).InclusiveBetween(1, 12);
+    }
+}
+
+public class RejectProofValidator : AbstractValidator<RejectProofViewModel>
+{
+    public RejectProofValidator() => RuleFor(x => x.Reason).NotEmpty().MaximumLength(300);
+}
+
+public class SaveRoleValidator : AbstractValidator<SaveRoleViewModel>
+{
+    public SaveRoleValidator()
+    {
+        RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(60);
+        RuleFor(x => x.Description).MaximumLength(300);
+        RuleFor(x => x.Permissions.Count).LessThanOrEqualTo(100);
+    }
+}
+
+public class ResetPinValidator : AbstractValidator<ResetPinViewModel>
+{
+    public ResetPinValidator()
+    {
+        RuleFor(x => x.NewPin).NotEmpty().Matches(@"^\d{4,6}$").WithMessage("PIN must be 4–6 digits.");
+    }
+}
 
 public class CreateUserValidator : AbstractValidator<CreateUserViewModel>
 {

@@ -63,6 +63,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Microsoft
     public DbSet<StaffSalary> StaffSalaries => Set<StaffSalary>();
     public DbSet<GarmentAttribute> GarmentAttributes => Set<GarmentAttribute>();
     public DbSet<KarigarRate> KarigarRates => Set<KarigarRate>();
+    public DbSet<GarmentTypeOption> GarmentTypeOptions => Set<GarmentTypeOption>();
     public DbSet<KarigarLedgerEntry> KarigarLedgerEntries => Set<KarigarLedgerEntry>();
     public DbSet<NotificationTemplate> NotificationTemplates => Set<NotificationTemplate>();
     public DbSet<NotificationMessage> NotificationMessages => Set<NotificationMessage>();
@@ -81,6 +82,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Microsoft
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
     public DbSet<TenantInvoice> TenantInvoices => Set<TenantInvoice>();
     public DbSet<TenantRolePermission> TenantRolePermissions => Set<TenantRolePermission>();
+    public DbSet<ShopRole> ShopRoles => Set<ShopRole>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     /// <summary>
@@ -122,6 +124,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Microsoft
         BranchFilter<StaffSalary>(builder);
         BranchFilter<GarmentAttribute>(builder);
         BranchFilter<KarigarRate>(builder);
+        BranchFilter<GarmentTypeOption>(builder);
         BranchFilter<KarigarLedgerEntry>(builder);
         BranchFilter<NotificationTemplate>(builder);
         BranchFilter<NotificationMessage>(builder);
@@ -203,6 +206,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Microsoft
         builder.Entity<MeasurementProfileVersion>().HasIndex(e => new { e.ProfileId, e.VersionNo }).IsUnique();
         builder.Entity<GarmentAttribute>().HasIndex(e => new { e.TenantId, e.BranchId, e.GarmentType, e.Name }).IsUnique()
             .AreNullsDistinct(false);
+        // One row per code per branch, deleted or not: a deleted custom code is never reused.
+        builder.Entity<GarmentTypeOption>().HasIndex(e => new { e.TenantId, e.BranchId, e.Code }).IsUnique();
+        builder.Entity<GarmentTypeOption>().Property(e => e.Name).HasMaxLength(60);
         builder.Entity<KarigarRate>().HasIndex(e => new { e.TenantId, e.BranchId, e.KarigarId, e.GarmentType, e.Stage }).IsUnique()
             .AreNullsDistinct(false);
         builder.Entity<KarigarLedgerEntry>().HasIndex(e => new { e.TenantId, e.BranchId, e.KarigarId, e.EntryDate });
@@ -235,6 +241,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Microsoft
         builder.Entity<TenantInvoice>().HasIndex(e => e.InvoiceNumber).IsUnique();
         builder.Entity<TenantInvoice>().HasIndex(e => new { e.TenantId, e.PeriodStart });
         builder.Entity<TenantRolePermission>().HasIndex(e => new { e.TenantId, e.RoleName, e.Permission }).IsUnique();
+        builder.Entity<ShopRole>().HasIndex(e => new { e.TenantId, e.RoleName }).IsUnique();
+        builder.Entity<ShopRole>().Property(e => e.RoleName).HasMaxLength(64);
+        builder.Entity<ShopRole>().Property(e => e.DisplayName).HasMaxLength(60);
+        builder.Entity<ShopRole>().Property(e => e.Description).HasMaxLength(300);
         builder.Entity<AuditLog>().HasIndex(e => new { e.TenantId, e.EntityType, e.EntityId });
         builder.Entity<AuditLog>().HasIndex(e => new { e.TenantId, e.CreatedOn });
 
@@ -313,7 +323,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Microsoft
         typeof(OrderItemStageAssignment), typeof(MeasurementProfile), typeof(Customer),
         typeof(Domain.Entities.User), typeof(ShopExpense), typeof(StaffSalary), typeof(Shop),
         typeof(KarigarLedgerEntry), typeof(KarigarRate), typeof(InventoryMovement),
-        typeof(CashSession), typeof(SalaryAdvance)
+        typeof(CashSession), typeof(SalaryAdvance), typeof(GarmentTypeOption)
     };
 
     /// <summary>Columns never written to the audit trail (noise or secrets).</summary>

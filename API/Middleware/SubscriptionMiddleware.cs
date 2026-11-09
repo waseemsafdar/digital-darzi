@@ -7,7 +7,7 @@ namespace API.Middleware;
 
 /// <summary>
 /// Blocks tenant API access (402 Payment Required) when the governing subscription is suspended,
-/// cancelled, or past its trial / paid end date.
+/// cancelled, or past its trial / paid end date with no free plan to fall back to (see SubscriptionResolver).
 ///
 /// The governing subscription is the current branch's own status, or — for branches added after
 /// provisioning, which carry no status — the tenant's first provisioned branch.
@@ -25,7 +25,7 @@ public class SubscriptionMiddleware
 
     public SubscriptionMiddleware(RequestDelegate next) => _next = next;
 
-    public async Task InvokeAsync(HttpContext context, IShopSettingsCache shops, TimeProvider clock)
+    public async Task InvokeAsync(HttpContext context, ISubscriptionResolver subscriptions)
     {
         var user = context.User;
         if (user.Identity?.IsAuthenticated != true
@@ -39,13 +39,17 @@ public class SubscriptionMiddleware
         if (Guid.TryParse(user.FindFirst("tenantId")?.Value, out var tenantId)
             && Guid.TryParse(user.FindFirst("shopId")?.Value, out var shopId))
         {
-            var governing = await shops.GetGoverningSubscriptionAsync(tenantId, shopId, context.RequestAborted);
-            var reason = BlockReason(governing, clock.GetUtcNow().UtcDateTime);
+            var reason = (await subscriptions.ResolveAsync(tenantId, shopId, context.RequestAborted)).BlockReason;
             if (reason != null)
             {
                 context.Response.StatusCode = StatusCodes.Status402PaymentRequired;
                 context.Response.ContentType = "application/json";
-                var body = ApiResponse<object>.Fail(reason, 402);
+                // data.subscriptionBlocked tells clients this is a locked shop, not a plan limit (both are 402).
+                var body = new ApiResponse<object>
+                {
+                    Success = false, Message = reason, Errors = new List<string> { reason },
+                    Data = new { subscriptionBlocked = true }
+                };
                 await context.Response.WriteAsync(JsonSerializer.Serialize(body,
                     new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
                 return;
@@ -55,20 +59,9 @@ public class SubscriptionMiddleware
         await _next(context);
     }
 
+    /// <summary>The lock rule when no free plan exists to fall back to (kept for the existing tests).</summary>
     internal static string? BlockReason(ShopSettings? governing, DateTime utcNow)
-    {
-        if (governing?.Status == null) return null;   // legacy tenant with no subscription data — not blocked
-        return governing.Status switch
-        {
-            SubscriptionStatus.Suspended or SubscriptionStatus.Cancelled
-                => "Your shop's subscription is suspended or cancelled.",
-            SubscriptionStatus.Trial when governing.TrialEndsAt.HasValue && governing.TrialEndsAt.Value < utcNow
-                => "Your trial has expired. Please contact support to upgrade to a paid plan.",
-            SubscriptionStatus.Active when governing.SubscriptionEndsAt.HasValue && governing.SubscriptionEndsAt.Value < utcNow
-                => "Your subscription has expired. Please renew to continue using the system.",
-            _ => null
-        };
-    }
+        => SubscriptionResolver.Classify(governing, freePlanExists: false, utcNow).BlockReason;
 }
 
 public static class SubscriptionMiddlewareExtensions

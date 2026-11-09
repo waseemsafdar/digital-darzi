@@ -135,6 +135,14 @@ public enum AttachmentType
     OrderItem = 4
 }
 
+/// <summary>What a photo on an order item shows, so the karigar sees design and fabric separately.</summary>
+public enum AttachmentKind
+{
+    General = 0,
+    Design  = 1,
+    Fabric  = 2
+}
+
 public enum ProductionStage
 {
     Cutting    = 1,
@@ -305,4 +313,12 @@ public enum InvoiceStatus
     Pending = 1,
     Paid    = 2,
     Void    = 3
+}
+
+/// <summary>Where the Owner's proof of payment stands.</summary>
+public enum InvoiceReviewStatus
+{
+    None      = 0,
+    Submitted = 1,
+    Rejected  = 2
 }

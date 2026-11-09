@@ -16,17 +16,25 @@ public class AttachmentService : IAttachmentService
     private readonly IFileStorage _storage;
     private readonly FileStorageOptions _options;
     private readonly ICurrentUserService _currentUser;
+    private readonly IPlanLimitService _limits;
 
-    public AttachmentService(ApplicationDbContext db, IFileStorage storage, IOptions<FileStorageOptions> options, ICurrentUserService currentUser)
+    public AttachmentService(ApplicationDbContext db, IFileStorage storage, IOptions<FileStorageOptions> options, ICurrentUserService currentUser,
+        IPlanLimitService limits)
     {
         _db = db;
         _storage = storage;
         _options = options.Value;
         _currentUser = currentUser;
+        _limits = limits;
     }
 
-    public async Task<ApiResponse<AttachmentViewModel>> UploadAsync(AttachmentType type, Guid entityId, IFormFile file, string? description, CancellationToken ct = default)
+    public async Task<ApiResponse<AttachmentViewModel>> UploadAsync(AttachmentType type, Guid entityId, IFormFile file, string? description,
+        AttachmentKind kind = AttachmentKind.General, CancellationToken ct = default)
     {
+        if (!Enum.IsDefined(kind)) return ApiResponse<AttachmentViewModel>.Fail("Unknown photo kind.");
+        if (type is AttachmentType.Order or AttachmentType.OrderItem
+            && await _limits.CheckFeatureAsync(PlanFeature.Photos, ct) is { } planError)
+            return ApiResponse<AttachmentViewModel>.PaymentRequired(planError);
         if (file.Length == 0) return ApiResponse<AttachmentViewModel>.Fail("The file is empty.");
         if (file.Length > _options.MaxFileBytes)
             return ApiResponse<AttachmentViewModel>.Fail($"The file is larger than {_options.MaxFileBytes / (1024 * 1024)} MB.");
@@ -48,6 +56,7 @@ public class AttachmentService : IAttachmentService
             Id             = id,
             EntityId       = entityId,
             AttachmentType = type,
+            Kind           = kind,
             ImageUrl       = $"/api/attachments/{id}/file",
             Description    = description,
             FileName       = Path.GetFileName(file.FileName),
@@ -106,7 +115,7 @@ public class AttachmentService : IAttachmentService
 
     private static AttachmentViewModel ToViewModel(Attachment a) => new()
     {
-        Id = a.Id, AttachmentType = a.AttachmentType, EntityId = a.EntityId ?? Guid.Empty,
+        Id = a.Id, AttachmentType = a.AttachmentType, Kind = a.Kind, EntityId = a.EntityId ?? Guid.Empty,
         FileName = a.FileName ?? string.Empty, ContentType = a.ContentType ?? string.Empty, SizeBytes = a.SizeBytes,
         Description = a.Description, Url = $"/api/attachments/{a.Id}/file", CreatedOn = a.CreatedOn
     };

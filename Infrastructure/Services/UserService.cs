@@ -17,14 +17,16 @@ public class UserService : IUserService
     private readonly UserManager<Identity.ApplicationUser> _userManager;
     private readonly ICurrentUserService _currentUser;
     private readonly IPlanLimitService _limits;
+    private readonly IRoleService _roles;
 
     public UserService(ApplicationDbContext db, UserManager<Identity.ApplicationUser> userManager,
-        ICurrentUserService currentUser, IPlanLimitService limits)
+        ICurrentUserService currentUser, IPlanLimitService limits, IRoleService roles)
     {
         _db          = db;
         _userManager = userManager;
         _currentUser = currentUser;
         _limits      = limits;
+        _roles       = roles;
     }
 
     public async Task<ApiResponse<List<RoleViewModel>>> GetRolesAsync(CancellationToken ct = default)
@@ -161,7 +163,7 @@ public class UserService : IUserService
 
         if (vm.RoleIds != null)
         {
-            var roleError = await ValidateRolesAsync(vm.RoleIds, ct);
+            var roleError = await ValidateRolesAsync(vm.RoleIds, ct, user.RoleIds);
             if (roleError != null) return roleError.As<UserDetailViewModel>();
             if (user.Id == _currentUser.UserId)
                 return ApiResponse<UserDetailViewModel>.Fail("You cannot change your own roles.");
@@ -190,6 +192,24 @@ public class UserService : IUserService
 
         await _db.SaveChangesAsync(ct);
         return await GetDetailAsync(vm.Id, ct);
+    }
+
+    public async Task<ApiResponse<object>> ResetPinAsync(Guid id, string newPin, CancellationToken ct = default)
+    {
+        // Tenant query filter: an owner can only reach their own staff.
+        var user = await _db.AppUsers.FirstOrDefaultAsync(u => u.Id == id, ct);
+        if (user == null) return ApiResponse<object>.NotFound("User not found.");
+        if (string.IsNullOrWhiteSpace(user.Phone))
+            return ApiResponse<object>.Fail("This person has no mobile number, so they cannot sign in with a PIN. Add their number first.");
+
+        user.Passcode = BCrypt.Net.BCrypt.HashPassword(newPin);
+        user.FailedLoginCount = 0;      // a forgotten PIN often means a locked account
+        user.LockoutEndsAt = null;
+        await _db.SaveChangesAsync(ct);
+
+        // A new PIN usually means a lost phone or a shared PIN: end every other session.
+        if (user.Id != _currentUser.UserId) await RevokeSessionsAsync(user.Id, ct);
+        return ApiResponse<object>.Ok(null, "PIN updated.");
     }
 
     public async Task<ApiResponse<object>> DeactivateAsync(Guid id, CancellationToken ct = default)
@@ -260,7 +280,7 @@ public class UserService : IUserService
         var user = await _db.AppUsers.FirstOrDefaultAsync(u => u.Id == id, ct);
         if (user == null) return ApiResponse<object>.NotFound("User not found.");
         if (user.Id == _currentUser.UserId) return ApiResponse<object>.Fail("You cannot change your own roles.");
-        var roleError = await ValidateRolesAsync(roleIds, ct);
+        var roleError = await ValidateRolesAsync(roleIds, ct, user.RoleIds);
         if (roleError != null) return roleError;
 
         user.RoleIds = roleIds;
@@ -271,7 +291,7 @@ public class UserService : IUserService
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private async Task<ApiResponse<object>?> ValidateRolesAsync(List<Guid> roleIds, CancellationToken ct)
+    private async Task<ApiResponse<object>?> ValidateRolesAsync(List<Guid> roleIds, CancellationToken ct, IEnumerable<Guid>? alreadyHeld = null)
     {
         if (roleIds.Count == 0) return null;
         var names = await RoleNamesAsync(roleIds, ct);
@@ -279,6 +299,9 @@ public class UserService : IUserService
             return ApiResponse<object>.NotFound("One or more roles were not found.");
         if (names.Any(r => RestrictedRoles.Contains(r)))
             return ApiResponse<object>.Forbidden($"Cannot assign '{AppRoles.Owner}' or '{AppRoles.SystemAdmin}' roles here. Use admin provisioning.");
+        // Another business's own role is unknown here; a hidden role is not handed out again.
+        var notAssignable = await _roles.CheckAssignableAsync(roleIds, alreadyHeld ?? Enumerable.Empty<Guid>(), ct);
+        if (notAssignable != null) return ApiResponse<object>.Fail(notAssignable);
         return null;
     }
 

@@ -67,6 +67,9 @@ namespace Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
                     b.Property<Guid?>("OrderId")
                         .HasColumnType("uuid");
 
@@ -503,6 +506,64 @@ namespace Infrastructure.Migrations
                     NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("TenantId", "BranchId", "GarmentType", "Name"), false);
 
                     b.ToTable("GarmentAttributes");
+                });
+
+            modelBuilder.Entity("Domain.Entities.GarmentTypeOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ActiveStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Code")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Sr")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("GarmentTypeOptions");
                 });
 
             modelBuilder.Entity("Domain.Entities.InventoryItem", b =>
@@ -2214,6 +2275,58 @@ namespace Infrastructure.Migrations
                     b.ToTable("ShopExpenses");
                 });
 
+            modelBuilder.Entity("Domain.Entities.ShopRole", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<Guid>("IdentityRoleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsCustom")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsHidden")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RoleName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "RoleName")
+                        .IsUnique();
+
+                    b.ToTable("ShopRoles");
+                });
+
             modelBuilder.Entity("Domain.Entities.StaffAttendance", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2388,7 +2501,16 @@ namespace Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<bool>("IncludesPhotos")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IncludesReports")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsFreeTier")
                         .HasColumnType("boolean");
 
                     b.Property<int?>("MaxBranches")
@@ -2552,6 +2674,9 @@ namespace Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("IsSelfService")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Notes")
                         .HasColumnType("text");
 
@@ -2572,6 +2697,33 @@ namespace Infrastructure.Migrations
 
                     b.Property<Guid?>("PlanId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ProofContentType")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProofFileName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProofNote")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProofPaidVia")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProofReference")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ProofStorageKey")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ProofSubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RejectReason")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ReviewStatus")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("ShopId")
                         .HasColumnType("uuid");

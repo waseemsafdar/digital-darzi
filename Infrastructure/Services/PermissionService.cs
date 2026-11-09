@@ -19,6 +19,9 @@ public interface IPermissionService
     Task<IReadOnlyList<string>> GetEffectivePermissionsAsync(Guid tenantId, IEnumerable<string> roles, CancellationToken ct = default);
     Task<ApiResponse<List<RolePermissionsViewModel>>> GetMatrixAsync(CancellationToken ct = default);
     Task<ApiResponse<RolePermissionsViewModel>> UpdateRoleAsync(string role, UpdateRolePermissionsRequest request, CancellationToken ct = default);
+
+    /// <summary>Drops the cached permission rows of a business after its roles changed.</summary>
+    void Invalidate(Guid tenantId);
 }
 
 /// <summary>
@@ -128,8 +131,17 @@ public sealed class PermissionService : IPermissionService
         return new RolePermissionsViewModel(role, Permissions.CustomisableRoles.Contains(role), list);
     }
 
+    public void Invalidate(Guid tenantId) => _cache.Remove(Key(tenantId));
+
     internal static bool Effective(string role, string permission, IReadOnlyCollection<TenantRolePermission> overrides)
     {
+        // A business's own role has no defaults: it holds exactly the permissions granted to it,
+        // and never an Owner-only one. Overrides are loaded per business, so another business's
+        // role name finds no rows here and gets nothing.
+        if (AppRoles.IsCustom(role))
+            return !Permissions.NonDelegable.Contains(permission)
+                   && overrides.Any(x => x.RoleName == role && x.Permission == permission && x.Granted);
+
         var isDefault = Permissions.Defaults.TryGetValue(role, out var defaults) && defaults.Contains(permission);
         if (!Permissions.CustomisableRoles.Contains(role)) return isDefault;
         if (Permissions.NonDelegable.Contains(permission)) return false;

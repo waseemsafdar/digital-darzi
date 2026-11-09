@@ -178,3 +178,40 @@ public class ExpenseCategoryDefinition : BaseDBModel
     public string Name { get; set; } = string.Empty;
     public int SortOrder { get; set; }
 }
+
+/// <summary>
+/// A shop's garment type. Built-in types (the <see cref="Enums.GarmentType"/> values) need no row;
+/// a row for a built-in code only stores the shop's rename, order or hidden flag. Custom types use
+/// codes from <see cref="GarmentTypeDefaults.FirstCustomCode"/> upward and are stored in the same
+/// integer column as the enum on orders, rates, styles and templates.
+/// </summary>
+public class GarmentTypeOption : BaseDBModel
+{
+    public int Code { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int SortOrder { get; set; }
+    public bool IsHidden { get; set; }
+}
+
+/// <summary>The starter garment types every shop gets, in the order the app shows them.</summary>
+public static class GarmentTypeDefaults
+{
+    public const int FirstCustomCode = 100;
+
+    public static readonly IReadOnlyList<(int Code, string Name)> BuiltIn = new[]
+    {
+        ((int)GarmentType.ShalwarKameez, "Shalwar Kameez"),
+        ((int)GarmentType.Kurta,         "Kurta"),
+        ((int)GarmentType.Waistcoat,     "Waistcoat"),
+        ((int)GarmentType.Sherwani,      "Sherwani"),
+        ((int)GarmentType.Suit,          "Suit"),
+        ((int)GarmentType.Coat,          "Coat"),
+        ((int)GarmentType.Trouser,       "Trouser"),
+        ((int)GarmentType.Shirt,         "Shirt"),
+        ((int)GarmentType.Frock,         "Frock"),
+        ((int)GarmentType.Lehnga,        "Lehnga"),
+        ((int)GarmentType.Other,         "Other"),
+    };
+
+    public static bool IsBuiltIn(int code) => BuiltIn.Any(b => b.Code == code);
+}

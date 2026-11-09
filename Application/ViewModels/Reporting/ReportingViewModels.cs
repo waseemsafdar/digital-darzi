@@ -83,6 +83,8 @@ public class DailyRevenueViewModel
 public class RevenueByGarmentViewModel
 {
     public GarmentType GarmentType { get; set; }
+    /// <summary>The current branch's name for the type (custom types have no enum name).</summary>
+    public string GarmentName { get; set; } = string.Empty;
     public int Count { get; set; }
     public decimal Revenue { get; set; }
 }

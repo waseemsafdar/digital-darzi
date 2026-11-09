@@ -24,6 +24,38 @@ public class SaveGarmentAttributeViewModel
     public int SortOrder { get; set; }
 }
 
+// ── Garment types ────────────────────────────────────────────────────────────
+public class GarmentTypeViewModel
+{
+    /// <summary>The value stored on orders, rates and styles (1–99 built-in, 100+ the shop's own).</summary>
+    public int Code { get; set; }
+    public string Name { get; set; } = string.Empty;
+    /// <summary>The starter name for a built-in type; null for the shop's own types.</summary>
+    public string? DefaultName { get; set; }
+    public bool IsBuiltIn { get; set; }
+    public bool IsHidden { get; set; }
+    public int SortOrder { get; set; }
+    /// <summary>Order items using this type. Only filled when hidden types are requested (the manage view).</summary>
+    public int? UsedByItems { get; set; }
+}
+
+public class CreateGarmentTypeViewModel
+{
+    public string Name { get; set; } = string.Empty;
+}
+
+public class UpdateGarmentTypeViewModel
+{
+    public string Name { get; set; } = string.Empty;
+    public bool IsHidden { get; set; }
+}
+
+public class ReorderGarmentTypesViewModel
+{
+    /// <summary>Every code in the new display order; codes left out keep their place after these.</summary>
+    public List<int> Codes { get; set; } = new();
+}
+
 // ── Inventory ────────────────────────────────────────────────────────────────
 public class SupplierViewModel
 {

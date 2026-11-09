@@ -12,41 +12,45 @@ public enum PlanLimit
     OrdersPerMonth
 }
 
+/// <summary>Parts of the app a plan can leave out (the free plan does).</summary>
+public enum PlanFeature
+{
+    Photos,
+    Reports
+}
+
 public interface IPlanLimitService
 {
     /// <summary>Null when the tenant may create one more of <paramref name="limit"/>; otherwise the reason.</summary>
     Task<string?> CheckAsync(PlanLimit limit, CancellationToken ct = default);
+
+    /// <summary>Null when the tenant's current plan includes <paramref name="feature"/>; otherwise the reason.</summary>
+    Task<string?> CheckFeatureAsync(PlanFeature feature, CancellationToken ct = default);
 }
 
 /// <summary>
-/// Enforces the limits of the tenant's subscription plan. The plan comes from the governing
-/// branch (see <see cref="IShopSettingsCache.GetGoverningSubscriptionAsync"/>); a tenant with no
-/// plan assigned is unlimited, which is how every tenant provisioned before plans existed behaves.
+/// Enforces the limits of the plan that applies now (see <see cref="ISubscriptionResolver"/>):
+/// the assigned plan during a trial or paid period, the free plan once that period has ended.
+/// A tenant with no plan is unlimited, which is how every tenant provisioned before plans existed behaves.
 /// </summary>
 public sealed class PlanLimitService : IPlanLimitService
 {
     private readonly ApplicationDbContext _db;
-    private readonly IShopSettingsCache _shops;
+    private readonly ISubscriptionResolver _subscriptions;
     private readonly ICurrentUserService _currentUser;
     private readonly TimeProvider _clock;
 
-    public PlanLimitService(ApplicationDbContext db, IShopSettingsCache shops, ICurrentUserService currentUser, TimeProvider clock)
+    public PlanLimitService(ApplicationDbContext db, ISubscriptionResolver subscriptions, ICurrentUserService currentUser, TimeProvider clock)
     {
         _db = db;
-        _shops = shops;
+        _subscriptions = subscriptions;
         _currentUser = currentUser;
         _clock = clock;
     }
 
     public async Task<string?> CheckAsync(PlanLimit limit, CancellationToken ct = default)
     {
-        var tenantId = _currentUser.TenantId;
-        if (tenantId == Guid.Empty || _currentUser.IsSystemAdmin) return null;
-
-        var governing = await _shops.GetGoverningSubscriptionAsync(tenantId, _currentUser.ShopId, ct);
-        if (governing?.SubscriptionPlanId == null) return null;
-
-        var plan = await _db.SubscriptionPlans.AsNoTracking().FirstOrDefaultAsync(p => p.Id == governing.SubscriptionPlanId, ct);
+        var plan = await CurrentPlanAsync(ct);
         if (plan == null) return null;
 
         switch (limit)
@@ -73,5 +77,24 @@ public sealed class PlanLimitService : IPlanLimitService
             default:
                 return null;
         }
+    }
+
+    public async Task<string?> CheckFeatureAsync(PlanFeature feature, CancellationToken ct = default)
+    {
+        var plan = await CurrentPlanAsync(ct);
+        if (plan == null) return null;
+        return feature switch
+        {
+            PlanFeature.Photos when !plan.IncludesPhotos => $"Photos are not part of the '{plan.Name}' plan. Upgrade to add design and fabric photos.",
+            PlanFeature.Reports when !plan.IncludesReports => $"Reports are not part of the '{plan.Name}' plan. Upgrade to see them.",
+            _ => null
+        };
+    }
+
+    private async Task<Domain.Entities.SubscriptionPlan?> CurrentPlanAsync(CancellationToken ct)
+    {
+        var tenantId = _currentUser.TenantId;
+        if (tenantId == Guid.Empty || _currentUser.IsSystemAdmin) return null;
+        return (await _subscriptions.ResolveAsync(tenantId, _currentUser.ShopId, ct)).EffectivePlan;
     }
 }

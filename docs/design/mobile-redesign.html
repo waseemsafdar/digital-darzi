@@ -1,0 +1,1243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Digital Darzi Mobile Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0F2744; --navy2:#1B3A5C; --gold:#C9A227; --gold-soft:#FBF3DC;
+  --bg:#F4F5F7; --surface:#FFFFFF; --text:#111827; --muted:#6B7280; --line:#E5E7EB; --line2:#F0F1F3;
+  --red:#C8281E; --red-soft:#FEE4E2; --green:#067647; --green-soft:#DCFAE6;
+  --amber:#B54708; --amber-soft:#FEF0C7; --blue:#175CD3; --blue-soft:#D1E9FF;
+  --purple:#6941C6; --purple-soft:#EBE9FE; --teal:#0E7090; --teal-soft:#CFF9FE;
+  --slate:#475467; --slate-soft:#EAECF0; --orange:#C4320A; --orange-soft:#FFE6D5;
+  --board:#E6E8EC;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--board);
+  background-image:radial-gradient(#cfd3da 1px,transparent 1px);background-size:22px 22px;color:var(--text);
+  -webkit-font-smoothing:antialiased}
+.board{padding:48px 56px 120px;max-width:1720px;margin:0 auto}
+.board-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:28px}
+.board-head h1{font-size:34px;letter-spacing:-.03em}
+.board-head p{color:#4b5563;margin-top:6px;font-size:15px}
+.tag{display:inline-block;background:var(--navy);color:#fff;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;margin-right:6px}
+.assume{background:#fff;border:1px solid #d6d9df;border-radius:14px;padding:16px 18px;font-size:13px;max-width:560px;line-height:1.5}
+.assume > b{display:block;margin-bottom:4px;font-size:13px}
+.assume li{margin-left:16px}
+section.grp{margin-top:56px}
+.grp-title{display:flex;align-items:baseline;gap:12px;margin-bottom:18px}
+.grp-title h2{font-size:22px;letter-spacing:-.02em}
+.grp-title span{color:#4b5563;font-size:14px}
+.row{display:flex;flex-wrap:wrap;gap:36px 32px;align-items:flex-start}
+.frame{width:360px}
+.frame-name{font-size:13px;font-weight:600;color:#374151;margin:0 0 8px 4px;display:flex;gap:8px;align-items:center}
+.frame-name i{font-style:normal;background:#fff;border:1px solid #d6d9df;border-radius:6px;padding:1px 6px;font-size:11px;color:#6b7280}
+.note{margin-top:12px;background:#FFF8D6;border:1px solid #F2E29A;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5;color:#3f3a1d}
+.note b{font-weight:700}
+.note code{font-family:ui-monospace,Consolas,monospace;font-size:11px;background:rgba(0,0,0,.05);padding:0 3px;border-radius:3px}
+
+/* phone */
+.phone{width:360px;height:760px;border-radius:40px;background:#0b1220;padding:8px;box-shadow:0 18px 40px rgba(15,23,42,.18)}
+.scr{position:relative;width:100%;height:100%;border-radius:32px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;font-size:14px}
+.sb{height:34px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 22px 0 26px;font-size:13px;font-weight:600}
+.sb .r{display:flex;gap:5px;align-items:center}
+.sb .bat{width:22px;height:11px;border:1.5px solid currentColor;border-radius:3px;position:relative}
+.sb .bat:after{content:"";position:absolute;inset:1.5px;right:5px;background:currentColor;border-radius:1px}
+.sb .sig{display:flex;gap:2px;align-items:flex-end}.sb .sig i{width:3px;background:currentColor;border-radius:1px}
+.dark .sb,.dark{color:#fff}
+.body{flex:1;overflow:hidden;padding:0 16px;display:flex;flex-direction:column;gap:12px}
+.body.pt{padding-top:6px}
+.top{display:flex;align-items:center;gap:10px;padding:8px 16px 10px;flex:none}
+.top .t{font-size:17px;font-weight:700;flex:1;letter-spacing:-.01em}
+.top .sub{font-size:12px;color:var(--muted);font-weight:500}
+.iconbtn{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid var(--line);flex:none}
+.iconbtn.ghost{background:transparent;border:none}
+.h1{font-size:24px;font-weight:800;letter-spacing:-.025em}
+.h2{font-size:15px;font-weight:700;letter-spacing:-.01em}
+.cap{font-size:12px;color:var(--muted)}
+.sec-h{display:flex;justify-content:space-between;align-items:center}
+.sec-h a{font-size:13px;color:var(--blue);font-weight:600;text-decoration:none}
+.muted{color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px}
+.card.tight{padding:12px}
+.card.flat{border:none}
+.stack{display:flex;flex-direction:column;gap:8px}
+.hstack{display:flex;align-items:center;gap:8px}
+.between{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.grow{flex:1;min-width:0}
+.ellip{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.money{font-variant-numeric:tabular-nums;font-weight:700}
+.divider{height:1px;background:var(--line)}
+.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.i.s{width:16px;height:16px}.i.xs{width:14px;height:14px}.i.l{width:24px;height:24px}
+
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 8px;border-radius:999px;white-space:nowrap;line-height:1.3}
+.badge.dot:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st-rec{background:var(--slate-soft);color:var(--slate)}
+.st-cut{background:var(--orange-soft);color:var(--orange)}
+.st-sti{background:var(--amber-soft);color:var(--amber)}
+.st-emb{background:var(--purple-soft);color:var(--purple)}
+.st-fin{background:var(--teal-soft);color:var(--teal)}
+.st-tri{background:var(--blue-soft);color:var(--blue)}
+.st-rdy{background:var(--green-soft);color:var(--green)}
+.st-del{background:#F2F4F7;color:#344054}
+.st-can{background:var(--red-soft);color:var(--red)}
+.pay-un{background:#fff;color:var(--red);box-shadow:inset 0 0 0 1px #FDA29B}
+.pay-pa{background:#fff;color:var(--amber);box-shadow:inset 0 0 0 1px #FEC84B}
+.pay-ok{background:#fff;color:var(--green);box-shadow:inset 0 0 0 1px #75E0A7}
+.late{background:var(--red);color:#fff}
+.rush{background:#FFF1F3;color:#C01048}
+.vip{background:var(--gold-soft);color:#7A5B00}
+
+.chips{display:flex;gap:8px;overflow:hidden;flex:none}
+.chip{border:1px solid var(--line);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:500;background:#fff;white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
+.chip .n{font-size:11px;font-weight:700;background:var(--line2);border-radius:999px;padding:1px 6px;color:#344054}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.chip.on .n{background:rgba(255,255,255,.18);color:#fff}
+.chip.red .n{background:var(--red);color:#fff}
+.seg{display:flex;background:#EAECF0;border-radius:12px;padding:3px;gap:2px;flex:none}
+.seg div{flex:1;text-align:center;padding:8px 4px;border-radius:9px;font-size:13px;font-weight:600;color:#475467}
+.seg .on{background:#fff;color:var(--text);box-shadow:0 1px 2px rgba(16,24,40,.08)}
+
+.btn{height:48px;border-radius:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;flex:none;padding:0 16px}
+.btn.pri{background:var(--navy);color:#fff}
+.btn.gold{background:var(--gold);color:#241a00}
+.btn.sec{background:#fff;border:1px solid var(--line);color:var(--text)}
+.btn.dang{background:#fff;border:1px solid #FDA29B;color:var(--red)}
+.btn.sm{height:36px;font-size:13px;border-radius:10px;padding:0 12px}
+.btn.wa{background:#E7F8EE;color:#067647}
+.btn.grow{flex:1 1 0;min-width:0}
+.btn.dis{background:#E5E7EB;color:#9CA3AF}
+
+.fld{display:flex;flex-direction:column;gap:6px}
+.fld label{font-size:12px;font-weight:600;color:#344054}
+.fld label em{color:var(--red);font-style:normal}
+.inp{height:46px;border:1px solid #D0D5DD;border-radius:12px;background:#fff;padding:0 12px;display:flex;align-items:center;gap:8px;font-size:15px}
+.inp.ph{color:#98A2B3}
+.inp.focus{border-color:var(--navy);box-shadow:0 0 0 3px rgba(15,39,68,.12)}
+.inp.err{border-color:#F04438;box-shadow:0 0 0 3px rgba(240,68,56,.12)}
+.inp .unit{margin-left:auto;font-size:12px;color:var(--muted);font-weight:600}
+.inp.area{height:64px;align-items:flex-start;padding-top:12px;font-size:14px}
+.help{font-size:12px;color:var(--muted)}
+.help.err{color:var(--red)}
+.search{height:44px;border-radius:14px;background:#fff;border:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 14px;color:#98A2B3;font-size:14px;flex:none}
+
+.avatar{width:40px;height:40px;border-radius:50%;background:#E0E7F1;color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex:none}
+.avatar.g{background:var(--gold-soft);color:#7A5B00}
+.avatar.s{width:32px;height:32px;font-size:12px}
+.list{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.li{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line2)}
+.li:last-child{border-bottom:none}
+.li .t{font-weight:600;font-size:14px}
+.li .s{font-size:12px;color:var(--muted);margin-top:2px}
+
+.nav{height:76px;flex:none;background:#fff;border-top:1px solid var(--line);display:flex;align-items:flex-start;padding-top:8px;position:relative}
+.nav div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#98A2B3}
+.nav .on{color:var(--navy)}
+.nav .on .i{stroke-width:2.4}
+.nav .fab{flex:none;width:56px;height:56px;margin:-26px 6px 0;border-radius:18px;background:var(--gold);color:#241a00;justify-content:center;box-shadow:0 8px 18px rgba(201,162,39,.45)}
+.home-ind{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:120px;height:4px;border-radius:4px;background:#111827}
+.dark .home-ind{background:#fff}
+.foot{flex:none;background:#fff;border-top:1px solid var(--line);padding:12px 16px 24px;display:flex;gap:10px;position:relative}
+.foot .home-ind{bottom:7px}
+
+.steps{display:flex;gap:4px;padding:0 16px 10px;flex:none}
+.steps i{flex:1;height:4px;border-radius:4px;background:#D0D5DD}
+.steps i.on{background:var(--gold)}
+.steps i.cur{background:var(--navy)}
+.stepname{padding:0 16px 8px;display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-weight:600;flex:none}
+
+.kpi{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px}
+.kpi .v{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-top:4px}
+.kpi .l{font-size:12px;color:var(--muted);font-weight:500}
+.kpi.dk{background:var(--navy);border-color:var(--navy);color:#fff}
+.kpi.dk .l{color:#B6C2D2}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+.alert{display:flex;gap:10px;align-items:center;border-radius:14px;padding:11px 12px;font-size:13px}
+.alert.red{background:var(--red-soft);color:#7A271A}
+.alert.amber{background:var(--amber-soft);color:#7A2E0E}
+.alert.blue{background:var(--blue-soft);color:#194185}
+.alert b{font-weight:700}
+
+.ocard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;position:relative}
+.ocard.lateb{box-shadow:inset 3px 0 0 var(--red)}
+.ocard .nm{font-weight:700;font-size:15px}
+.ocard .no{font-size:12px;color:var(--muted);font-family:ui-monospace,Consolas,monospace}
+
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mv{background:#F9FAFB;border:1px solid var(--line2);border-radius:12px;padding:8px 10px}
+.mv .k{font-size:11px;color:var(--muted);font-weight:600}
+.mv .v{font-size:16px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+.mv .v small{font-size:11px;color:var(--muted);font-weight:600;margin-left:2px}
+.mv.chg{background:var(--gold-soft);border-color:#F1DE9E}
+.mv .was{font-size:11px;color:#7A5B00;font-weight:600}
+
+.opt{border:1.5px solid var(--line);border-radius:14px;padding:12px;background:#fff;display:flex;gap:10px;align-items:flex-start}
+.opt.on{border-color:var(--navy);box-shadow:0 0 0 3px rgba(15,39,68,.08)}
+.radio{width:20px;height:20px;border-radius:50%;border:2px solid #D0D5DD;flex:none;margin-top:1px}
+.radio.on{border:6px solid var(--navy)}
+.cbx{width:20px;height:20px;border-radius:6px;border:2px solid #D0D5DD;flex:none;display:flex;align-items:center;justify-content:center}
+.cbx.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.tgl{width:40px;height:24px;border-radius:999px;background:#D0D5DD;position:relative;flex:none}
+.tgl:after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.tgl.on{background:var(--navy)}.tgl.on:after{left:19px}
+.stepper{display:flex;align-items:center;border:1px solid #D0D5DD;border-radius:10px;overflow:hidden;flex:none}
+.stepper span{width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.stepper b{min-width:24px;text-align:center;font-size:14px}
+
+.gtile{background:#fff;border:1.5px solid var(--line);border-radius:14px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;font-weight:600;text-align:center;position:relative}
+.gtile .ic{width:36px;height:36px;border-radius:10px;background:#F2F4F7;display:flex;align-items:center;justify-content:center;color:var(--navy)}
+.gtile.on{border-color:var(--navy);background:#F5F8FC}
+.gtile.on .ic{background:var(--navy);color:#fff}
+.gtile .cnt{position:absolute;top:-7px;right:-6px;background:var(--gold);color:#241a00;font-size:11px;font-weight:800;border-radius:999px;min-width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0 5px}
+
+.prog{display:flex;align-items:center;gap:0;margin:4px 0}
+.prog .d{width:22px;height:22px;border-radius:50%;background:#E5E7EB;display:flex;align-items:center;justify-content:center;color:#fff;flex:none}
+.prog .d.ok{background:var(--green)}
+.prog .d.now{background:#fff;border:3px solid var(--amber)}
+.prog .ln{flex:1;height:3px;background:#E5E7EB}
+.prog .ln.ok{background:var(--green)}
+.proglbl{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);font-weight:600}
+.proglbl .now{color:var(--amber)}
+
+.stage{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px dashed var(--line)}
+.stage .ic{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none}
+
+.dim{position:absolute;inset:0;background:rgba(10,18,32,.5);z-index:2}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;z-index:3;padding:10px 16px 28px;display:flex;flex-direction:column;gap:12px}
+.sheet .grab{width:40px;height:5px;border-radius:4px;background:#D0D5DD;margin:0 auto 2px}
+.sheet .home-ind{bottom:7px}
+
+.skel{background:linear-gradient(90deg,#EEF0F3,#F6F7F9,#EEF0F3);border-radius:8px}
+
+/* design-system panel */
+.ds{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.panel{background:#fff;border:1px solid #d6d9df;border-radius:16px;padding:18px}
+.panel h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:14px}
+.sw{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px}
+.sw i{width:36px;height:36px;border-radius:10px;border:1px solid rgba(0,0,0,.06);flex:none}
+.sw code{font-size:11px;color:#6b7280;font-family:ui-monospace,Consolas,monospace}
+.typ div{margin-bottom:10px}
+.wrap{display:flex;flex-wrap:wrap;gap:8px}
+.flowline{display:flex;align-items:center;gap:6px;font-size:12px;color:#4b5563;flex-wrap:wrap;margin:-6px 0 18px}
+.flowline span{background:#fff;border:1px solid #d6d9df;border-radius:999px;padding:4px 10px;font-weight:600}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+    <symbol id="bag" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></symbol>
+    <symbol id="users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+    <symbol id="minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="phone" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+    <symbol id="msg" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
+    <symbol id="ruler" viewBox="0 0 24 24"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></symbol>
+    <symbol id="scissors" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></symbol>
+    <symbol id="check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="wallet" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></symbol>
+    <symbol id="printer" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></symbol>
+    <symbol id="filter" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></symbol>
+    <symbol id="x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+    <symbol id="cal" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol>
+    <symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></symbol>
+    <symbol id="camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+    <symbol id="truck" viewBox="0 0 24 24"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></symbol>
+    <symbol id="more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+    <symbol id="shirt" viewBox="0 0 24 24"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></symbol>
+    <symbol id="history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+    <symbol id="lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+    <symbol id="trend" viewBox="0 0 24 24"><path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/></symbol>
+    <symbol id="play" viewBox="0 0 24 24"><path d="M6 3l14 9-14 9V3z"/></symbol>
+    <symbol id="grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/></symbol>
+    <symbol id="cog" viewBox="0 0 24 24"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M1 14h6"/><path d="M9 8h6"/><path d="M17 16h6"/></symbol>
+    <symbol id="shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+    <symbol id="box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></symbol>
+    <symbol id="cash" viewBox="0 0 24 24"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></symbol>
+    <symbol id="bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+    <symbol id="logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+    <symbol id="edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+    <symbol id="needle" viewBox="0 0 24 24"><path d="M19 3 5 17"/><circle cx="18" cy="4" r="1.6"/><path d="M5 17l-2 4 4-2"/><path d="M9 7c-3 0-5 2-5 4s3 3 6 2"/></symbol>
+  </defs>
+</svg>
+
+<div class="board">
+
+  <div class="board-head">
+    <div>
+      <span class="tag">Mobile · v1 for review</span><span class="tag" style="background:var(--gold);color:#241a00">Owner, staff and karigar</span>
+      <h1 style="margin-top:12px">Digital Darzi — mobile app redesign</h1>
+      <p>Screen designs for review. Every screen uses data the API already returns; yellow notes name the source and any backend gap.</p>
+    </div>
+    <div class="assume">
+      <b>Designed under these assumptions (from BUSINESS_WORKFLOWS §6)</b>
+      <ul>
+        <li>Garment types stay the fixed list. Templates are the owner's "styles" inside a garment.</li>
+        <li>Staff have a display-only <b>designation</b> (Master, Cutter, Helper). Permissions come from the role. Needs small backend change M6.</li>
+        <li>Measurements taken during an order are <b>saved to the customer</b> by default.</li>
+        <li>Karigars see no prices. Their app shows only their own work.</li>
+        <li>Super Admin works on the web console, not this app.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ DESIGN SYSTEM ============ -->
+  <section class="grp">
+    <div class="grp-title"><h2>0 · Design system</h2><span>Brand kept from the current app (navy and gold), made calmer and more consistent</span></div>
+    <div class="ds">
+      <div class="panel">
+        <h3>Colour</h3>
+        <div class="sw"><i style="background:var(--navy)"></i><div><b>Navy</b> primary actions, selected<br><code>#0F2744</code></div></div>
+        <div class="sw"><i style="background:var(--gold)"></i><div><b>Gold</b> new order, progress, highlights<br><code>#C9A227</code></div></div>
+        <div class="sw"><i style="background:var(--bg)"></i><div><b>Canvas</b> screen background<br><code>#F4F5F7</code></div></div>
+        <div class="sw"><i style="background:var(--red)"></i><div><b>Red</b> late, balance due, destructive<br><code>#C8281E</code></div></div>
+        <div class="sw"><i style="background:var(--green)"></i><div><b>Green</b> ready, paid, done<br><code>#067647</code></div></div>
+      </div>
+      <div class="panel typ">
+        <h3>Type · Inter</h3>
+        <div style="font-size:24px;font-weight:800;letter-spacing:-.025em">Screen title 24/800</div>
+        <div style="font-size:17px;font-weight:700">App bar 17/700</div>
+        <div style="font-size:15px;font-weight:700">Section 15/700</div>
+        <div style="font-size:14px">Body 14/400 — order notes, lists</div>
+        <div style="font-size:12px;color:var(--muted)">Caption 12/400 — dates, order numbers</div>
+        <div style="font-size:22px;font-weight:800;font-variant-numeric:tabular-nums">Rs 18,500 <span style="font-size:12px;color:var(--muted);font-weight:500">money 22/800 tabular</span></div>
+      </div>
+      <div class="panel">
+        <h3>Order status · one colour each</h3>
+        <div class="wrap">
+          <span class="badge dot st-rec">Received</span><span class="badge dot st-cut">Cutting</span><span class="badge dot st-sti">Stitching</span>
+          <span class="badge dot st-emb">Embroidery</span><span class="badge dot st-fin">Finishing</span><span class="badge dot st-tri">Trial ready</span>
+          <span class="badge dot st-tri">Trial done</span><span class="badge dot st-rdy">Ready</span><span class="badge dot st-del">Delivered</span>
+          <span class="badge dot st-del">Part delivered</span><span class="badge dot st-can">Cancelled</span>
+        </div>
+        <h3 style="margin-top:18px">Payment · outlined, never mixed with status</h3>
+        <div class="wrap"><span class="badge pay-un">Unpaid</span><span class="badge pay-pa">Partly paid</span><span class="badge pay-ok">Paid</span><span class="badge late">Late 3d</span><span class="badge rush">Rush</span><span class="badge vip">VIP</span></div>
+      </div>
+      <div class="panel">
+        <h3>Controls</h3>
+        <div class="stack">
+          <div class="btn pri">Primary action</div>
+          <div class="hstack"><div class="btn sec grow">Secondary</div><div class="btn gold grow"><svg class="i"><use href="#plus"/></svg>New order</div></div>
+          <div class="hstack"><div class="chip on">Selected <span class="n">5</span></div><div class="chip">Chip <span class="n">12</span></div></div>
+          <div class="fld"><label>Field label <em>*</em></label><div class="inp focus">40.5<span class="unit">in</span></div></div>
+          <div class="fld"><div class="inp err">03001</div><div class="help err">Enter an 11-digit mobile number.</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CORE ============ -->
+  <section class="grp">
+    <div class="grp-title"><h2>1 · Owner and manager — daily screens</h2><span>Four tabs and a gold New Order button always in reach</span></div>
+    <div class="row">
+
+      <!-- Login -->
+      <div class="frame">
+        <div class="frame-name">1.1 Sign in <i>all users</i></div>
+        <div class="phone"><div class="scr dark" style="background:linear-gradient(170deg,#0F2744 0%,#0F2744 52%,#F4F5F7 52%)">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div style="padding:36px 24px 0">
+            <div style="width:56px;height:56px;border-radius:18px;background:var(--gold);display:flex;align-items:center;justify-content:center;color:#241a00"><svg class="i l"><use href="#scissors"/></svg></div>
+            <div style="font-size:28px;font-weight:800;letter-spacing:-.03em;margin-top:18px">Digital Darzi</div>
+            <div style="color:#B6C2D2;margin-top:4px">Sign in to your shop</div>
+          </div>
+          <div style="margin:28px 16px 0;background:#fff;border-radius:22px;padding:18px;color:var(--text);display:flex;flex-direction:column;gap:14px;box-shadow:0 12px 30px rgba(15,39,68,.15)">
+            <div class="seg"><div>Email</div><div class="on">Phone &amp; PIN</div></div>
+            <div class="fld"><label>Mobile number</label><div class="inp">0300 1234567</div></div>
+            <div class="fld"><label>4-digit PIN</label>
+              <div class="hstack" style="gap:10px">
+                <div class="inp" style="width:56px;justify-content:center;font-size:22px">•</div><div class="inp" style="width:56px;justify-content:center;font-size:22px">•</div>
+                <div class="inp focus" style="width:56px;justify-content:center"></div><div class="inp" style="width:56px"></div>
+              </div>
+            </div>
+            <div class="btn pri">Sign in</div>
+            <div style="text-align:center;font-size:13px;color:var(--blue);font-weight:600">Forgot PIN?</div>
+          </div>
+          <div style="margin-top:auto;padding:0 24px 30px;text-align:center;font-size:12px;color:var(--muted)">Karigars and counter staff use phone and PIN.<br>Owners can use email.</div>
+          <div class="home-ind" style="background:#111827"></div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>POST /auth/login</code> then <code>GET /auth/me</code>. The app opens the screens the person's permissions allow. A karigar lands on 6.1, everyone else on 1.2.<br>Lockout and rate-limit messages appear under the button.</div>
+      </div>
+
+      <!-- Dashboard -->
+      <div class="frame">
+        <div class="frame-name">1.2 Home <i>reports.view</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top">
+            <div class="grow">
+              <div class="sub">Softronix Tailors</div>
+              <div class="hstack" style="gap:4px;font-weight:700;font-size:17px">Main Branch <svg class="i s"><use href="#down"/></svg></div>
+            </div>
+            <div class="iconbtn"><svg class="i"><use href="#search"/></svg></div>
+            <div class="avatar s g">AR</div>
+          </div>
+          <div class="body">
+            <div class="alert red"><svg class="i"><use href="#alert"/></svg><div class="grow"><b>3 orders are late</b><br>Oldest was due 12 Jul</div><svg class="i s"><use href="#right"/></svg></div>
+            <div class="grid2">
+              <div class="kpi dk"><div class="l">Collected today</div><div class="v">Rs 18,500</div><div class="cap" style="color:#B6C2D2">6 payments</div></div>
+              <div class="kpi"><div class="l">Due today</div><div class="v">5</div><div class="cap">2 ready, 3 not</div></div>
+              <div class="kpi"><div class="l">Ready for pickup</div><div class="v" style="color:var(--green)">7</div><div class="cap">Rs 21,000 to collect</div></div>
+              <div class="kpi"><div class="l">In production</div><div class="v">31</div><div class="cap">2 sent back for rework</div></div>
+            </div>
+            <div class="sec-h"><div class="h2">Production now</div><a>Board</a></div>
+            <div class="card tight stack" style="gap:9px">
+              <div class="between cap"><span>Cutting</span><b style="color:var(--text)">6</b></div><div style="height:6px;background:#F2F4F7;border-radius:6px"><div style="width:20%;height:100%;background:var(--orange);border-radius:6px"></div></div>
+              <div class="between cap"><span>Stitching</span><b style="color:var(--text)">14</b></div><div style="height:6px;background:#F2F4F7;border-radius:6px"><div style="width:48%;height:100%;background:var(--amber);border-radius:6px"></div></div>
+              <div class="between cap"><span>Embroidery</span><b style="color:var(--text)">3</b></div><div style="height:6px;background:#F2F4F7;border-radius:6px"><div style="width:10%;height:100%;background:var(--purple);border-radius:6px"></div></div>
+              <div class="between cap"><span>Finishing</span><b style="color:var(--text)">8</b></div><div style="height:6px;background:#F2F4F7;border-radius:6px"><div style="width:27%;height:100%;background:var(--teal);border-radius:6px"></div></div>
+            </div>
+            <div class="sec-h"><div class="h2">Due today</div><a>All 5</a></div>
+            <div class="list">
+              <div class="li"><div class="avatar s">MA</div><div class="grow"><div class="t">Mehran Abbas</div><div class="s">2 items · Rs 3,000 due</div></div><span class="badge dot st-rdy">Ready</span></div>
+              <div class="li"><div class="avatar s">SK</div><div class="grow"><div class="t">Saad Khan</div><div class="s">1 item · Paid</div></div><span class="badge dot st-sti">Stitching</span></div>
+            </div>
+          </div>
+          <div class="nav">
+            <div class="on"><svg class="i"><use href="#home"/></svg>Home</div>
+            <div><svg class="i"><use href="#bag"/></svg>Orders</div>
+            <div class="fab"><svg class="i l"><use href="#plus"/></svg></div>
+            <div><svg class="i"><use href="#users"/></svg>Customers</div>
+            <div><svg class="i"><use href="#grid"/></svg>More</div>
+            <div class="home-ind"></div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>GET /reports/dashboard</code> gives today's collections, ready, in production, rework and stage counts. <code>GET /orders/board</code> gives the late and due-today lists.<br><b>Removed:</b> the "+12%" chip, which had no data behind it.<br>Branch name opens the branch switcher (<code>POST /auth/switch-branch</code>).</div>
+      </div>
+
+      <!-- Orders list -->
+      <div class="frame">
+        <div class="frame-name">1.3 Orders <i>orders.list</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="h1 grow">Orders</div><div class="iconbtn"><svg class="i"><use href="#filter"/></svg></div></div>
+          <div class="body">
+            <div class="search"><svg class="i s"><use href="#search"/></svg>Name, phone or order no.</div>
+            <div class="chips"><div class="chip on">Active <span class="n">42</span></div><div class="chip red">Late <span class="n">3</span></div><div class="chip">Today <span class="n">5</span></div><div class="chip">Trial <span class="n">4</span></div><div class="chip">Ready <span class="n">7</span></div></div>
+            <div class="ocard lateb">
+              <div class="between"><div class="nm">Mehran Abbas</div><span class="badge dot st-sti">Stitching</span></div>
+              <div class="between"><span class="no">ORD-260719-469B88</span><span class="badge late">Late 3d</span></div>
+              <div class="cap">Shalwar Kameez ×2 · Waistcoat</div>
+              <div class="divider"></div>
+              <div class="between"><span class="cap">Due Sat 19 Jul</span><span class="hstack"><span class="badge pay-pa">Rs 1,500 due</span></span></div>
+            </div>
+            <div class="ocard">
+              <div class="between"><div class="nm">Ahmed Raza</div><span class="badge dot st-tri">Trial ready</span></div>
+              <div class="between"><span class="no">ORD-261102-07B536</span><span class="badge rush">Rush</span></div>
+              <div class="cap">Sherwani · Trial Mon 10 Nov</div>
+              <div class="divider"></div>
+              <div class="between"><span class="cap">Due Fri 14 Nov</span><span class="badge pay-pa">Rs 9,000 due</span></div>
+            </div>
+            <div class="ocard">
+              <div class="between"><div class="nm">Sana Tariq</div><span class="badge dot st-rdy">Ready</span></div>
+              <div class="between"><span class="no">ORD-261101-624156</span></div>
+              <div class="cap">Ladies Shalwar Kameez ×3</div>
+              <div class="divider"></div>
+              <div class="between"><span class="cap">Due today</span><span class="badge pay-ok">Paid</span></div>
+            </div>
+          </div>
+          <div class="nav">
+            <div><svg class="i"><use href="#home"/></svg>Home</div>
+            <div class="on"><svg class="i"><use href="#bag"/></svg>Orders</div>
+            <div class="fab"><svg class="i l"><use href="#plus"/></svg></div>
+            <div><svg class="i"><use href="#users"/></svg>Customers</div>
+            <div><svg class="i"><use href="#grid"/></svg>More</div>
+            <div class="home-ind"></div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>GET /orders?…</code> chips map to <code>overdue=true</code>, <code>dueToday=true</code>, <code>status=6</code> and so on.<br><b>Fixes:</b> item line uses real items instead of "0 item". Production status and payment are separate badges. Old "Pending" orders show as Received. A red edge marks late orders.</div>
+      </div>
+
+      <!-- More -->
+      <div class="frame">
+        <div class="frame-name">1.4 More <i>shown by permission</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="body pt" style="gap:14px">
+            <div class="card hstack" style="gap:12px"><div class="avatar g">AR</div><div class="grow"><div style="font-weight:700">Ali Raza</div><div class="cap">Owner · Main Branch</div></div><div class="btn sec sm">Switch</div></div>
+            <div class="alert blue"><svg class="i"><use href="#shield"/></svg><div class="grow"><b>Growth plan</b> · renews 12 Dec</div><svg class="i s"><use href="#right"/></svg></div>
+            <div class="cap" style="font-weight:700;letter-spacing:.05em">DAILY WORK</div>
+            <div class="list">
+              <div class="li"><svg class="i"><use href="#truck"/></svg><div class="grow t">Deliveries</div><span class="badge late">3</span></div>
+              <div class="li"><svg class="i"><use href="#scissors"/></svg><div class="grow t">Production board</div><svg class="i s muted"><use href="#right"/></svg></div>
+              <div class="li"><svg class="i"><use href="#cash"/></svg><div class="grow t">Cash drawer</div><span class="cap">Open</span></div>
+            </div>
+            <div class="cap" style="font-weight:700;letter-spacing:.05em">SHOP SETUP</div>
+            <div class="list">
+              <div class="li"><svg class="i"><use href="#ruler"/></svg><div class="grow t">Measurement styles</div><svg class="i s muted"><use href="#right"/></svg></div>
+              <div class="li"><svg class="i"><use href="#users"/></svg><div class="grow t">Staff and roles</div><svg class="i s muted"><use href="#right"/></svg></div>
+              <div class="li"><svg class="i"><use href="#cog"/></svg><div class="grow t">Shop settings</div><svg class="i s muted"><use href="#right"/></svg></div>
+            </div>
+            <div class="cap" style="font-weight:700;letter-spacing:.05em">BUSINESS</div>
+            <div class="list">
+              <div class="li"><svg class="i"><use href="#trend"/></svg><div class="grow t">Reports</div><svg class="i s muted"><use href="#right"/></svg></div>
+              <div class="li"><svg class="i"><use href="#wallet"/></svg><div class="grow t">Expenses, salaries, karigar pay</div><svg class="i s muted"><use href="#right"/></svg></div>
+            </div>
+          </div>
+          <div class="nav">
+            <div><svg class="i"><use href="#home"/></svg>Home</div>
+            <div><svg class="i"><use href="#bag"/></svg>Orders</div>
+            <div class="fab"><svg class="i l"><use href="#plus"/></svg></div>
+            <div><svg class="i"><use href="#users"/></svg>Customers</div>
+            <div class="on"><svg class="i"><use href="#grid"/></svg>More</div>
+            <div class="home-ind"></div>
+          </div>
+        </div></div>
+        <div class="note"><b>Rule:</b> each row appears only if <code>/auth/me</code> lists its permission, for example Reports needs <code>reports.view</code> and Staff needs <code>users.view</code>. A receptionist sees Deliveries and Cash only.<br>Replaces the old side drawer, which showed every item to everyone.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ NEW ORDER ============ -->
+  <section class="grp">
+    <div class="grp-title"><h2>2 · New order</h2><span>Six short steps. Running total always visible. Several garments per order.</span></div>
+    <div class="flowline"><span>Customer</span>→<span>Garments</span>→<span>Measurements</span>→<span>Fabric &amp; style</span>→<span>Price &amp; advance</span>→<span>Dates &amp; confirm</span>→<span>Done</span></div>
+    <div class="row">
+
+      <!-- Step 1 -->
+      <div class="frame">
+        <div class="frame-name">2.1 Customer <i>orders.create</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#x"/></svg></div><div class="t">New order</div></div>
+          <div class="steps"><i class="cur"></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="stepname"><span>Step 1 of 6</span><span>Who is it for?</span></div>
+          <div class="body">
+            <div class="search" style="color:var(--text);border-color:var(--navy);box-shadow:0 0 0 3px rgba(15,39,68,.12)"><svg class="i s"><use href="#search"/></svg>0300 12</div>
+            <div class="cap">2 matches</div>
+            <div class="opt on">
+              <div class="radio on"></div>
+              <div class="grow">
+                <div class="between"><b>Ahmed Raza</b><span class="badge vip">VIP</span></div>
+                <div class="cap">0300 1234567 · Lahore</div>
+                <div class="hstack" style="margin-top:8px;gap:6px;flex-wrap:wrap"><span class="badge st-del">12 orders</span><span class="badge st-del">3 measurement sets</span><span class="badge pay-un">Rs 2,000 due</span></div>
+              </div>
+            </div>
+            <div class="opt">
+              <div class="radio"></div>
+              <div class="grow"><b>Ahmed Bilal</b><div class="cap">0300 1299881 · 2 orders</div></div>
+            </div>
+            <div class="card hstack" style="border-style:dashed;gap:12px">
+              <div class="avatar" style="background:var(--gold-soft);color:#7A5B00"><svg class="i"><use href="#plus"/></svg></div>
+              <div class="grow"><b>New customer</b><div class="cap">Name and phone only, add the rest later</div></div>
+            </div>
+            <div class="alert amber"><svg class="i"><use href="#wallet"/></svg><div>Ahmed already owes <b>Rs 2,000</b> on ORD-261020.</div></div>
+          </div>
+          <div class="foot"><div class="btn sec" style="width:110px">Cancel</div><div class="btn pri grow">Next: garments</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>GET /customers?query=</code> as you type. New customer opens a quick sheet that calls <code>POST /customers</code> with name and phone. A 409 duplicate phone offers "Use existing".<br>The existing balance warning comes from <code>/customers/{id}/ledger</code>, shown only with <code>finance.view</code>.</div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="frame">
+        <div class="frame-name">2.2 Garments</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="t">New order</div><span class="cap">Ahmed Raza</span></div>
+          <div class="steps"><i class="on"></i><i class="cur"></i><i></i><i></i><i></i><i></i></div>
+          <div class="stepname"><span>Step 2 of 6</span><span>What are we making?</span></div>
+          <div class="body">
+            <div class="grid3">
+              <div class="gtile on"><span class="cnt">2</span><div class="ic"><svg class="i"><use href="#shirt"/></svg></div>Shalwar Kameez</div>
+              <div class="gtile"><div class="ic"><svg class="i"><use href="#shirt"/></svg></div>Kurta</div>
+              <div class="gtile on"><span class="cnt">1</span><div class="ic"><svg class="i"><use href="#shirt"/></svg></div>Waistcoat</div>
+              <div class="gtile"><div class="ic"><svg class="i"><use href="#shirt"/></svg></div>Sherwani</div>
+              <div class="gtile"><div class="ic"><svg class="i"><use href="#shirt"/></svg></div>Suit</div>
+              <div class="gtile"><div class="ic"><svg class="i"><use href="#shirt"/></svg></div>Coat</div>
+              <div class="gtile"><div class="ic"><svg class="i"><use href="#shirt"/></svg></div>Trouser</div>
+              <div class="gtile"><div class="ic"><svg class="i"><use href="#shirt"/></svg></div>Shirt</div>
+              <div class="gtile"><div class="ic"><svg class="i"><use href="#more"/></svg></div>More</div>
+            </div>
+            <div class="h2" style="margin-top:4px">In this order</div>
+            <div class="list">
+              <div class="li"><div class="grow"><div class="t">Shalwar Kameez</div><div class="s">Item 1</div></div><div class="stepper"><span><svg class="i xs"><use href="#minus"/></svg></span><b>2</b><span><svg class="i xs"><use href="#plus"/></svg></span></div></div>
+              <div class="li"><div class="grow"><div class="t">Waistcoat</div><div class="s">Item 2</div></div><div class="stepper"><span><svg class="i xs"><use href="#minus"/></svg></span><b>1</b><span><svg class="i xs"><use href="#plus"/></svg></span></div></div>
+            </div>
+            <div class="help">Same garment in two different styles? Tap it again to add a separate item.</div>
+          </div>
+          <div class="foot"><div class="btn sec" style="width:110px">Back</div><div class="btn pri grow">Next: measurements</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>API:</b> tiles are the fixed <code>GarmentType</code> list. Each line becomes one entry in <code>items[]</code> with its own <code>qty</code> (1–500, max 50 items).<br><b>Fix:</b> garments and measurement styles are no longer mixed. "Pant Coat" is a style of Coat, chosen in the next step.</div>
+      </div>
+
+      <!-- Step 3a -->
+      <div class="frame">
+        <div class="frame-name">2.3 Measurements · saved set</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="t">New order</div><span class="cap">Ahmed Raza</span></div>
+          <div class="steps"><i class="on"></i><i class="on"></i><i class="cur"></i><i></i><i></i><i></i></div>
+          <div class="stepname"><span>Step 3 of 6</span><span>Item 1 of 2</span></div>
+          <div class="body">
+            <div class="seg"><div class="on">Shalwar Kameez ×2</div><div>Waistcoat</div></div>
+            <div class="fld"><label>Style</label><div class="inp">Gents Shalwar Kameez<svg class="i s" style="margin-left:auto"><use href="#down"/></svg></div></div>
+            <div class="opt on">
+              <div class="radio on"></div>
+              <div class="grow">
+                <div class="between"><b>Use "Summer 2026"</b><span class="badge st-del">v3</span></div>
+                <div class="cap">Updated 12 Aug by Ali</div>
+              </div>
+            </div>
+            <div class="mgrid">
+              <div class="mv"><div class="k">Chest</div><div class="v">40<small>in</small></div></div>
+              <div class="mv"><div class="k">Shoulder</div><div class="v">18<small>in</small></div></div>
+              <div class="mv"><div class="k">Sleeve</div><div class="v">24.5<small>in</small></div></div>
+              <div class="mv"><div class="k">Kameez length</div><div class="v">42<small>in</small></div></div>
+            </div>
+            <div class="between"><span class="cap">+4 more · Collar, Waist, Trouser, Pauncha</span><span style="font-size:13px;color:var(--blue);font-weight:600">Edit values</span></div>
+            <div class="opt"><div class="radio"></div><div class="grow"><b>Take new measurements</b><div class="cap">Saved to Ahmed for next time</div></div></div>
+            <div class="opt"><div class="radio"></div><div class="grow"><b>No measurements</b><div class="cap">Copy of a sample garment, alteration</div></div></div>
+          </div>
+          <div class="foot"><div class="btn sec" style="width:110px">Back</div><div class="btn pri grow">Next: Waistcoat</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>API:</b> styles from <code>GET /measurements/templates</code> filtered by this garment. Saved sets from <code>GET /measurements/profiles/customer/{id}</code>, <b>filtered to these styles</b>. Sends <code>measurementProfileId</code>.<br><b>Fix:</b> the old screen offered "Overcoat" for a Shalwar Kameez.<br>"Edit values" saves a new version (<code>PUT /profiles/{id}</code>) before the order uses it.</div>
+      </div>
+
+      <!-- Step 3b -->
+      <div class="frame">
+        <div class="frame-name">2.4 Measurements · take new</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="t">New order</div><span class="cap">Ahmed Raza</span></div>
+          <div class="steps"><i class="on"></i><i class="on"></i><i class="cur"></i><i></i><i></i><i></i></div>
+          <div class="stepname"><span>Step 3 of 6</span><span>Item 2 of 2</span></div>
+          <div class="body">
+            <div class="seg"><div>Shalwar Kameez ×2 <span style="color:var(--green)">✓</span></div><div class="on">Waistcoat</div></div>
+            <div class="between"><div><b>Regular waistcoat</b><div class="cap">No saved set for this style yet</div></div><span class="cap">5 fields</span></div>
+            <div class="grid2">
+              <div class="fld"><label>Chest <em>*</em></label><div class="inp">40<span class="unit">in</span></div></div>
+              <div class="fld"><label>Shoulder <em>*</em></label><div class="inp">18<span class="unit">in</span></div></div>
+              <div class="fld"><label>Length <em>*</em></label><div class="inp focus">27.5<span class="unit">in</span></div></div>
+              <div class="fld"><label>Waist <em>*</em></label><div class="inp err ph">—<span class="unit">in</span></div></div>
+            </div>
+            <div class="help err" style="margin-top:-6px">Waist is required for this style.</div>
+            <div class="fld"><label>Back width</label><div class="inp ph">Optional<span class="unit">in</span></div></div>
+            <div class="card tight hstack" style="gap:10px"><div class="cbx on"><svg class="i xs"><use href="#check"/></svg></div><div class="grow"><b style="font-size:13px">Save to Ahmed's measurements</b><div class="cap">Name: Waistcoat · Nov 2026</div></div></div>
+          </div>
+          <div class="foot"><div class="btn sec" style="width:110px">Back</div><div class="btn dis grow">Next: fabric</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>Dynamic form:</b> only this style's fields, in its order, from <code>GET /templates/{id}</code>. Required fields marked and checked before Next. Number fields open the numeric keypad.<br><b>API:</b> ticked → <code>POST /measurements/profiles</code> first, then the item uses the new profile id. Unticked → inline values on the item (server keeps them on the order only).</div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="frame">
+        <div class="frame-name">2.5 Fabric and style</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="t">New order</div><span class="cap">Ahmed Raza</span></div>
+          <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i class="cur"></i><i></i><i></i></div>
+          <div class="stepname"><span>Step 4 of 6</span><span>Shalwar Kameez ×2</span></div>
+          <div class="body" style="gap:11px">
+            <div class="fld"><label>Fabric from</label><div class="seg"><div class="on">Customer</div><div>Shop</div><div>Bought for order</div></div></div>
+            <div class="grid2">
+              <div class="fld"><label>Fabric</label><div class="inp">Wash &amp; wear</div></div>
+              <div class="fld"><label>Colour</label><div class="inp">Navy blue</div></div>
+            </div>
+            <div class="fld"><label>Collar style</label><div class="chips" style="flex-wrap:wrap"><div class="chip">Shirt collar</div><div class="chip on">Band collar</div><div class="chip">Sherwani</div><div class="chip">Round neck</div></div></div>
+            <div class="fld"><label>Cuff style</label><div class="chips"><div class="chip">Plain</div><div class="chip on">Round cuff</div><div class="chip">Square</div><div class="chip">Kurta</div></div></div>
+            <div class="fld"><label>Pockets</label><div class="chips"><div class="chip">None</div><div class="chip on">Side</div><div class="chip">Front</div><div class="chip">Both</div></div></div>
+            <div class="fld"><label>Notes for karigar</label><div class="inp area">Slim fit. Extra buttons in a packet.</div></div>
+            <div class="hstack"><div class="btn sec sm"><svg class="i s"><use href="#camera"/></svg>Fabric photo</div><span class="cap">Optional</span></div>
+          </div>
+          <div class="foot"><div class="btn sec" style="width:110px">Back</div><div class="btn pri grow">Next: Waistcoat</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>API:</b> option groups from <code>GET /garment-attributes?garmentType=1</code>, sent as <code>attributes{name:value}</code>. Required groups are enforced by the server.<br><code>fabricSource</code>, <code>fabricDescription</code>, <code>fabricColor</code>, <code>styleNotes</code>. Photo uploads after create with <code>POST /attachments</code>.<br>None of these exist in the current app.</div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="frame">
+        <div class="frame-name">2.6 Price and advance</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="t">New order</div><span class="cap">Ahmed Raza</span></div>
+          <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="cur"></i><i></i></div>
+          <div class="stepname"><span>Step 5 of 6</span><span>Price and advance</span></div>
+          <div class="body">
+            <div class="card stack" style="gap:10px">
+              <div class="between"><div><b>Shalwar Kameez</b><div class="cap">2 × Rs 3,500</div></div><div class="inp" style="width:110px;height:40px;justify-content:flex-end" >3,500</div></div>
+              <div class="between"><div><b>Waistcoat</b><div class="cap">1 × Rs 4,000</div></div><div class="inp" style="width:110px;height:40px;justify-content:flex-end">4,000</div></div>
+              <div class="divider"></div>
+              <div class="between cap"><span>Subtotal</span><span class="money" style="color:var(--text)">Rs 11,000</span></div>
+              <div class="between cap"><span>Discount</span><div class="inp" style="width:110px;height:36px;justify-content:flex-end;font-size:14px">500</div></div>
+              <div class="between"><b>Total</b><span class="money" style="font-size:18px">Rs 10,500</span></div>
+            </div>
+            <div class="fld"><label>Advance paid now</label><div class="inp focus" style="font-size:18px;font-weight:700">Rs 5,000</div></div>
+            <div class="chips"><div class="chip on">Cash</div><div class="chip">JazzCash</div><div class="chip">EasyPaisa</div><div class="chip">Bank</div></div>
+            <div class="card hstack" style="background:var(--gold-soft);border-color:#F1DE9E">
+              <div class="grow"><div class="cap" style="color:#7A5B00;font-weight:600">Balance on delivery</div><div class="money" style="font-size:24px">Rs 5,500</div></div>
+              <span class="badge pay-pa">Partly paid</span>
+            </div>
+          </div>
+          <div class="foot"><div class="btn sec" style="width:110px">Back</div><div class="btn pri grow">Next: dates</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>Maths matches the server:</b> Σ(price × qty + fabric charge) − discount. The advance becomes the first payment (<code>advancePayment</code>, <code>paymentMethod</code>).<br>Discount above the subtotal and negative amounts are blocked here and rejected by the server.</div>
+      </div>
+
+      <!-- Step 6 -->
+      <div class="frame">
+        <div class="frame-name">2.7 Dates and confirm</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="t">New order</div><span class="cap">Ahmed Raza</span></div>
+          <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="cur"></i></div>
+          <div class="stepname"><span>Step 6 of 6</span><span>Dates and confirm</span></div>
+          <div class="body">
+            <div class="fld"><label>Delivery date <em>*</em></label><div class="chips"><div class="chip">+7 days</div><div class="chip on">+10 days</div><div class="chip">+14 days</div><div class="chip"><svg class="i xs"><use href="#cal"/></svg>Pick</div></div><div class="help">Wed 19 Nov · 14 other orders due that day</div></div>
+            <div class="fld"><label>Priority</label><div class="seg"><div class="on">Normal</div><div>Rush</div><div>VIP</div></div></div>
+            <div class="card tight between"><div><b style="font-size:14px">Trial fitting</b><div class="cap">Sat 15 Nov</div></div><div class="tgl on"></div></div>
+            <div class="card tight between"><div><b style="font-size:14px">Assign karigars now</b><div class="cap">Or later from the order</div></div><div class="tgl"></div></div>
+            <div class="card stack" style="gap:6px">
+              <div class="between"><b>Summary</b><span style="font-size:13px;color:var(--blue);font-weight:600">Edit</span></div>
+              <div class="between cap"><span>Shalwar Kameez ×2 · Summer 2026 v3</span><span>7,000</span></div>
+              <div class="between cap"><span>Waistcoat · new measurements</span><span>4,000</span></div>
+              <div class="between cap"><span>Discount</span><span>−500</span></div>
+              <div class="between cap"><span>Advance · Cash</span><span>−5,000</span></div>
+              <div class="divider"></div>
+              <div class="between"><b>Balance</b><span class="money">Rs 5,500</span></div>
+            </div>
+          </div>
+          <div class="foot"><div class="btn gold grow"><svg class="i"><use href="#check"/></svg>Create order</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>POST /orders</code> with <code>deliveryDate</code> (UTC), <code>priority</code>, <code>trialRequired</code>, <code>trialDate</code>, optional <code>stageAssignments</code>.<br>"Due that day" count comes from <code>GET /orders?deliveryFrom=&amp;deliveryTo=</code> to help spread workload.<br>Plan limit or 402 errors show as a sheet with a link to Subscription.</div>
+      </div>
+
+      <!-- Success -->
+      <div class="frame">
+        <div class="frame-name">2.8 Order created</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="body" style="align-items:center;text-align:center;padding-top:70px">
+            <div style="width:84px;height:84px;border-radius:50%;background:var(--green-soft);display:flex;align-items:center;justify-content:center;color:var(--green)"><svg class="i" style="width:42px;height:42px;stroke-width:2.6"><use href="#check"/></svg></div>
+            <div class="h1" style="margin-top:10px">Order created</div>
+            <div class="no" style="font-family:ui-monospace,Consolas,monospace;color:var(--muted)">ORD-261109-A41C2E</div>
+            <div class="card stack" style="width:100%;text-align:left;gap:8px;margin-top:10px">
+              <div class="between cap"><span>Customer</span><b style="color:var(--text)">Ahmed Raza</b></div>
+              <div class="between cap"><span>Items</span><b style="color:var(--text)">3 pieces</b></div>
+              <div class="between cap"><span>Trial</span><b style="color:var(--text)">Sat 15 Nov</b></div>
+              <div class="between cap"><span>Delivery</span><b style="color:var(--text)">Wed 19 Nov</b></div>
+              <div class="between cap"><span>Balance</span><b style="color:var(--text)">Rs 5,500</b></div>
+            </div>
+            <div class="alert blue" style="width:100%;text-align:left"><svg class="i"><use href="#msg"/></svg><div>WhatsApp confirmation queued to 0300 1234567</div></div>
+          </div>
+          <div class="foot" style="flex-direction:column"><div class="hstack"><div class="btn wa grow"><svg class="i"><use href="#msg"/></svg>Send receipt</div><div class="btn sec grow"><svg class="i"><use href="#printer"/></svg>Print</div></div><div class="btn pri">Open order</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>API:</b> receipt from <code>GET /orders/{id}/receipt?format=html</code> for print or share. The confirmation message is sent by the server's outbox when the shop has it switched on.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ORDER DETAIL ============ -->
+  <section class="grp">
+    <div class="grp-title"><h2>3 · Order detail and actions</h2><span>One screen to see where the order is, who has it, and what is owed</span></div>
+    <div class="row">
+
+      <div class="frame">
+        <div class="frame-name">3.1 Order detail <i>orders.view</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="grow"><div class="t">ORD-261109-A41C2E</div><div class="sub">Created 9 Nov · by Ali</div></div><div class="iconbtn ghost"><svg class="i"><use href="#more"/></svg></div></div>
+          <div class="body">
+            <div class="card hstack"><div class="avatar">AR</div><div class="grow"><b>Ahmed Raza</b><div class="cap">0300 1234567</div></div><div class="iconbtn"><svg class="i s"><use href="#phone"/></svg></div><div class="iconbtn" style="color:var(--green)"><svg class="i s"><use href="#msg"/></svg></div></div>
+            <div class="card stack" style="gap:8px">
+              <div class="between"><span class="badge dot st-sti">Stitching</span><span class="cap">Due Wed 19 Nov · 10 days</span></div>
+              <div class="prog"><div class="d ok"><svg class="i xs"><use href="#check"/></svg></div><div class="ln ok"></div><div class="d ok"><svg class="i xs"><use href="#check"/></svg></div><div class="ln ok"></div><div class="d now"></div><div class="ln"></div><div class="d"></div><div class="ln"></div><div class="d"></div><div class="ln"></div><div class="d"></div></div>
+              <div class="proglbl"><span>Received</span><span>Cutting</span><span class="now">Stitching</span><span>Trial</span><span>Ready</span><span>Delivered</span></div>
+            </div>
+            <div class="card between"><div><div class="cap">Total Rs 10,500 · Paid Rs 5,000</div><div class="money" style="font-size:20px;color:var(--red)">Rs 5,500 due</div></div><span class="badge pay-pa">Partly paid</span></div>
+            <div class="sec-h"><div class="h2">Items</div><span class="cap">2 items · 3 pieces</span></div>
+            <div class="card tight">
+              <div class="between"><b>Shalwar Kameez ×2</b><span style="font-size:13px;color:var(--blue);font-weight:600">Measurements</span></div>
+              <div class="cap">Band collar · Round cuff · Side pockets</div>
+              <div class="stage" style="margin-top:6px"><div class="ic" style="background:var(--green-soft);color:var(--green)"><svg class="i s"><use href="#check"/></svg></div><div class="grow"><b style="font-size:13px">Cutting</b> <span class="cap">· Imran · done 10 Nov</span></div></div>
+              <div class="stage"><div class="ic" style="background:var(--amber-soft);color:var(--amber)"><svg class="i s"><use href="#play"/></svg></div><div class="grow"><b style="font-size:13px">Stitching</b> <span class="cap">· Bilal · started today</span></div></div>
+              <div class="stage"><div class="ic" style="background:#F2F4F7;color:#98A2B3"><svg class="i s"><use href="#user"/></svg></div><div class="grow"><b style="font-size:13px">Finishing</b> <span class="cap">· not assigned</span></div><span style="font-size:13px;color:var(--blue);font-weight:600">Assign</span></div>
+            </div>
+          </div>
+          <div class="foot"><div class="btn sec grow"><svg class="i s"><use href="#wallet"/></svg>Payment</div><div class="btn pri grow">Update status</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>API:</b> everything from one call, <code>GET /orders/{id}</code>: stage progress per item, payments, alterations, history. "Assign" calls <code>POST /orders/stages/assign</code> (<code>production.assign</code>).<br>⋯ menu: edit dates and notes, history, receipt, alteration, repeat order, cancel. Each item hidden without its permission.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">3.2 Record payment <i>payments.record</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span></div>
+          <div class="body" style="opacity:.6"><div class="card" style="height:90px"></div><div class="card" style="height:120px"></div><div class="card" style="height:80px"></div></div>
+          <div class="dim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="between"><div class="h2" style="font-size:17px">Record payment</div><svg class="i"><use href="#x"/></svg></div>
+            <div class="card tight between" style="background:#F9FAFB"><span class="cap">Balance due</span><span class="money">Rs 5,500</span></div>
+            <div class="fld"><label>Amount</label><div class="inp focus" style="font-size:24px;font-weight:800;height:56px">Rs 5,500</div></div>
+            <div class="chips"><div class="chip on">Full balance</div><div class="chip">Rs 2,000</div><div class="chip">Rs 3,000</div></div>
+            <div class="fld"><label>Method</label><div class="chips"><div class="chip on">Cash</div><div class="chip">JazzCash</div><div class="chip">EasyPaisa</div><div class="chip">Bank</div></div></div>
+            <div class="fld"><label>Note</label><div class="inp ph">Optional, e.g. transaction ID</div></div>
+            <div class="btn pri">Save payment</div>
+            <div class="home-ind"></div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>POST /orders/{id}/payments</code> with <code>amount</code>, <code>paymentMethod</code>, <code>note</code>. Payment status updates itself; production status never changes.<br>A 409 means someone else just paid. The sheet reloads the balance.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">3.3 Update status <i>orders.status</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span></div>
+          <div class="body" style="opacity:.6"><div class="card" style="height:90px"></div><div class="card" style="height:120px"></div></div>
+          <div class="dim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="between"><div class="h2" style="font-size:17px">Move order to…</div><svg class="i"><use href="#x"/></svg></div>
+            <div class="cap">Now: <span class="badge dot st-sti">Stitching</span></div>
+            <div class="opt"><div class="radio"></div><div class="grow"><b>Embroidery</b></div><span class="badge dot st-emb">next</span></div>
+            <div class="opt on"><div class="radio on"></div><div class="grow"><b>Finishing</b></div><span class="badge dot st-fin">next</span></div>
+            <div class="opt"><div class="radio"></div><div class="grow"><b>Trial ready</b></div><span class="badge dot st-tri">next</span></div>
+            <div class="opt"><div class="radio"></div><div class="grow"><b>Ready to deliver</b></div><span class="badge dot st-rdy">next</span></div>
+            <div class="opt"><div class="radio"></div><div class="grow"><b>Back to cutting</b><div class="cap">Needs a reason</div></div><span class="badge st-del">back</span></div>
+            <div class="fld"><label>Note</label><div class="inp ph">Optional for forward moves</div></div>
+            <div class="btn pri">Move to Finishing</div>
+            <div class="home-ind"></div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> choices are exactly <code>allowedNextStatuses</code> from the order. Backward moves require a note. <code>PATCH /orders/{id}/status</code>.<br>Most orders move on their own as karigars finish stages, so this is for exceptions.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">3.4 Deliver <i>orders.deliver</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span></div>
+          <div class="body" style="opacity:.6"><div class="card" style="height:90px"></div><div class="card" style="height:120px"></div></div>
+          <div class="dim"></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="between"><div class="h2" style="font-size:17px">Hand over to Ahmed</div><svg class="i"><use href="#x"/></svg></div>
+            <div class="list">
+              <div class="li"><div class="cbx on"><svg class="i xs"><use href="#check"/></svg></div><div class="grow"><div class="t">Shalwar Kameez ×2</div><div class="s">Ready</div></div></div>
+              <div class="li"><div class="cbx"></div><div class="grow"><div class="t">Waistcoat</div><div class="s">Still in finishing</div></div><span class="badge st-fin">Not ready</span></div>
+            </div>
+            <div class="alert red"><svg class="i"><use href="#alert"/></svg><div class="grow"><b>Rs 5,500 still due.</b> Collect it first, or deliver with balance.</div></div>
+            <div class="btn pri"><svg class="i s"><use href="#wallet"/></svg>Collect Rs 5,500 and deliver</div>
+            <div class="btn sec">Deliver with balance</div>
+            <div class="help" style="text-align:center">Partial delivery: the order becomes "Part delivered".</div>
+            <div class="home-ind"></div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>POST /orders/{id}/deliver</code> with <code>itemIds</code> for partial delivery. "Deliver with balance" sends <code>allowBalance: true</code> and only shows with <code>orders.deliver_with_balance</code>.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CUSTOMERS ============ -->
+  <section class="grp">
+    <div class="grp-title"><h2>4 · Customers and measurements</h2><span>Measurements live with the customer, grouped by garment, with history</span></div>
+    <div class="row">
+
+      <div class="frame">
+        <div class="frame-name">4.1 Customers <i>customers.view</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="h1 grow">Customers</div><div class="iconbtn" style="background:var(--navy);color:#fff;border-color:var(--navy)"><svg class="i"><use href="#plus"/></svg></div></div>
+          <div class="body">
+            <div class="search"><svg class="i s"><use href="#search"/></svg>Name or phone</div>
+            <div class="chips"><div class="chip on">All <span class="n">248</span></div><div class="chip">Owes money <span class="n">19</span></div><div class="chip">VIP</div><div class="chip">Corporate</div></div>
+            <div class="list">
+              <div class="li"><div class="avatar">AR</div><div class="grow"><div class="t">Ahmed Raza <span class="badge vip" style="margin-left:4px">VIP</span></div><div class="s">0300 1234567 · 12 orders</div></div><span class="badge pay-un">Rs 2,000</span></div>
+              <div class="li"><div class="avatar">MA</div><div class="grow"><div class="t">Mehran Abbas</div><div class="s">0343 2343432 · 3 orders</div></div><span class="badge pay-un">Rs 1,500</span></div>
+              <div class="li"><div class="avatar">ST</div><div class="grow"><div class="t">Sana Tariq</div><div class="s">0321 7788990 · 5 orders</div></div><svg class="i s muted"><use href="#right"/></svg></div>
+              <div class="li"><div class="avatar">JA</div><div class="grow"><div class="t">Jawad Ali</div><div class="s">0303 0300303 · 1 order</div></div><svg class="i s muted"><use href="#right"/></svg></div>
+              <div class="li"><div class="avatar">HS</div><div class="grow"><div class="t">Hamza Sheikh</div><div class="s">0333 4455667 · 8 orders</div></div><svg class="i s muted"><use href="#right"/></svg></div>
+              <div class="li"><div class="avatar">FN</div><div class="grow"><div class="t">Fatima Noor</div><div class="s">0312 9988776 · 2 orders</div></div><svg class="i s muted"><use href="#right"/></svg></div>
+            </div>
+          </div>
+          <div class="nav">
+            <div><svg class="i"><use href="#home"/></svg>Home</div>
+            <div><svg class="i"><use href="#bag"/></svg>Orders</div>
+            <div class="fab"><svg class="i l"><use href="#plus"/></svg></div>
+            <div class="on"><svg class="i"><use href="#users"/></svg>Customers</div>
+            <div><svg class="i"><use href="#grid"/></svg>More</div>
+            <div class="home-ind"></div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>GET /customers?query=&amp;hasBalance=true&amp;customerType=2</code>. The total is <code>totalRecords</code>, so the count is real.<br><b>Change:</b> the yellow "+ Order" button on every row is gone. Start an order from the customer page or the gold button.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">4.2 New customer <i>customers.edit</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#x"/></svg></div><div class="t">New customer</div></div>
+          <div class="body">
+            <div class="fld"><label>Full name <em>*</em></label><div class="inp">Ali Hassan</div></div>
+            <div class="fld"><label>Mobile <em>*</em></label><div class="inp">0300 1234567</div></div>
+            <div class="card tight between"><div><b style="font-size:14px">WhatsApp on same number</b><div class="cap">Order updates go here</div></div><div class="tgl on"></div></div>
+            <div class="fld"><label>Gender</label><div class="seg"><div class="on">Male</div><div>Female</div><div>Other</div></div></div>
+            <div class="grid2">
+              <div class="fld"><label>City</label><div class="inp">Lahore</div></div>
+              <div class="fld"><label>Type</label><div class="inp">Regular<svg class="i s" style="margin-left:auto"><use href="#down"/></svg></div></div>
+            </div>
+            <div class="fld"><label>Address</label><div class="inp ph">Optional</div></div>
+            <div class="fld"><label>Notes</label><div class="inp area ph">Preferences, fabric he likes…</div></div>
+          </div>
+          <div class="foot" style="flex-direction:column"><div class="btn pri"><svg class="i s"><use href="#ruler"/></svg>Save and take measurements</div><div class="btn sec">Save only</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>POST /customers</code>. "Alternate phone" is replaced by the WhatsApp toggle, which fills <code>whatsAppNumber</code>. If off, a WhatsApp field appears.<br>"Save and take measurements" goes straight to 4.4 with the new customer, fixing the old "save first, then come back" loop.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">4.3 Customer page</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="t"></div><div class="iconbtn ghost"><svg class="i"><use href="#edit"/></svg></div></div>
+          <div class="body">
+            <div class="hstack" style="gap:12px"><div class="avatar" style="width:56px;height:56px;font-size:18px">AR</div><div class="grow"><div class="h2" style="font-size:19px">Ahmed Raza <span class="badge vip">VIP</span></div><div class="cap">0300 1234567 · Lahore</div></div></div>
+            <div class="hstack"><div class="btn sec sm grow"><svg class="i s"><use href="#phone"/></svg>Call</div><div class="btn wa sm grow"><svg class="i s"><use href="#msg"/></svg>WhatsApp</div><div class="btn gold sm grow"><svg class="i s"><use href="#plus"/></svg>Order</div></div>
+            <div class="grid3">
+              <div class="kpi" style="padding:10px"><div class="l">Orders</div><div class="v" style="font-size:18px">12</div></div>
+              <div class="kpi" style="padding:10px"><div class="l">Spent</div><div class="v" style="font-size:18px">84k</div></div>
+              <div class="kpi" style="padding:10px"><div class="l">Owes</div><div class="v" style="font-size:18px;color:var(--red)">2,000</div></div>
+            </div>
+            <div class="seg"><div class="on">Measurements</div><div>Orders</div><div>Payments</div></div>
+            <div class="cap" style="font-weight:700;letter-spacing:.05em">SHALWAR KAMEEZ</div>
+            <div class="list">
+              <div class="li"><svg class="i muted"><use href="#ruler"/></svg><div class="grow"><div class="t">Summer 2026</div><div class="s">Gents Shalwar Kameez · v3 · 12 Aug</div></div><svg class="i s muted"><use href="#right"/></svg></div>
+              <div class="li"><svg class="i muted"><use href="#ruler"/></svg><div class="grow"><div class="t">Wedding fit</div><div class="s">Gents Shalwar Kameez · v1 · Jan</div></div><svg class="i s muted"><use href="#right"/></svg></div>
+            </div>
+            <div class="cap" style="font-weight:700;letter-spacing:.05em">WAISTCOAT</div>
+            <div class="list"><div class="li"><svg class="i muted"><use href="#ruler"/></svg><div class="grow"><div class="t">Waistcoat · Nov 2026</div><div class="s">Regular waistcoat · v1 · today</div></div><svg class="i s muted"><use href="#right"/></svg></div></div>
+            <div class="btn sec sm" style="border-style:dashed"><svg class="i s"><use href="#plus"/></svg>Add measurements</div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>GET /customers/{id}</code>, profiles from <code>/measurements/profiles/customer/{id}</code> grouped by the style's garment. Orders tab: <code>/orders/customer/{id}</code>. Payments tab: <code>/customers/{id}/ledger</code>, hidden without <code>finance.view</code>.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">4.4 Measurement set with history</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="grow"><div class="t">Summer 2026</div><div class="sub">Ahmed Raza · Gents Shalwar Kameez</div></div></div>
+          <div class="body">
+            <div class="chips"><div class="chip on"><svg class="i xs"><use href="#history"/></svg>v3 · 12 Aug</div><div class="chip">v2 · 3 Mar</div><div class="chip">v1 · 2025</div></div>
+            <div class="alert amber"><svg class="i"><use href="#history"/></svg><div>2 values changed since v2</div></div>
+            <div class="mgrid">
+              <div class="mv chg"><div class="k">Chest</div><div class="v">40<small>in</small></div><div class="was">was 39.5</div></div>
+              <div class="mv"><div class="k">Shoulder</div><div class="v">18<small>in</small></div></div>
+              <div class="mv"><div class="k">Sleeve</div><div class="v">24.5<small>in</small></div></div>
+              <div class="mv"><div class="k">Kameez length</div><div class="v">42<small>in</small></div></div>
+              <div class="mv chg"><div class="k">Waist</div><div class="v">36<small>in</small></div><div class="was">was 35</div></div>
+              <div class="mv"><div class="k">Collar</div><div class="v">15.5<small>in</small></div></div>
+              <div class="mv"><div class="k">Trouser length</div><div class="v">39<small>in</small></div></div>
+              <div class="mv"><div class="k">Pauncha</div><div class="v">7.5<small>in</small></div></div>
+            </div>
+            <div class="card tight"><div class="cap">Note</div><div style="font-size:13px">Prefers loose sleeves. Left shoulder slightly lower.</div></div>
+          </div>
+          <div class="foot"><div class="btn sec grow"><svg class="i s"><use href="#edit"/></svg>Update</div><div class="btn gold grow"><svg class="i s"><use href="#plus"/></svg>Use in order</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>GET /measurements/profiles/{id}</code> and <code>/versions</code>. "Update" opens the same dynamic form as 2.4 and saves v4 with <code>PUT</code>. Old orders keep their own copy, so nothing past changes.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SETUP ============ -->
+  <section class="grp">
+    <div class="grp-title"><h2>5 · Shop setup</h2><span>Owner screens for measurement styles and staff</span></div>
+    <div class="row">
+
+      <div class="frame">
+        <div class="frame-name">5.1 Measurement styles <i>measurements.configure</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="t">Measurement styles</div><div class="iconbtn" style="background:var(--navy);color:#fff;border-color:var(--navy)"><svg class="i"><use href="#plus"/></svg></div></div>
+          <div class="body">
+            <div class="seg"><div class="on">Styles</div><div>Fields</div><div>Options</div></div>
+            <div class="cap" style="font-weight:700;letter-spacing:.05em">SHALWAR KAMEEZ</div>
+            <div class="list">
+              <div class="li"><div class="grow"><div class="t">Gents Shalwar Kameez <span class="badge st-tri" style="margin-left:4px">Default</span></div><div class="s">8 fields · 6 required</div></div><svg class="i s muted"><use href="#right"/></svg></div>
+              <div class="li"><div class="grow"><div class="t">Ladies Shalwar Kameez</div><div class="s">8 fields · 6 required</div></div><svg class="i s muted"><use href="#right"/></svg></div>
+            </div>
+            <div class="cap" style="font-weight:700;letter-spacing:.05em">COAT</div>
+            <div class="list"><div class="li"><div class="grow"><div class="t">Gents Pant Coat</div><div class="s">9 fields · 6 required</div></div><svg class="i s muted"><use href="#right"/></svg></div></div>
+            <div class="cap" style="font-weight:700;letter-spacing:.05em">WAISTCOAT</div>
+            <div class="list"><div class="li"><div class="grow"><div class="t">Regular waistcoat</div><div class="s">5 fields · 4 required</div></div><svg class="i s muted"><use href="#right"/></svg></div></div>
+            <div class="cap" style="font-weight:700;letter-spacing:.05em">FROCK</div>
+            <div class="list"><div class="li"><div class="grow"><div class="t">Ladies Frock</div><div class="s">7 fields · 6 required</div></div><svg class="i s muted"><use href="#right"/></svg></div></div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>GET /measurements/templates</code> grouped by <code>garmentType</code>. "Fields" tab manages the shared field list (<code>/measurements/fields</code>). "Options" tab manages collar, cuff and similar choices (<code>/garment-attributes</code>).<br><b>Gap:</b> hiding a style without deleting it needs backend change M10.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">5.2 Edit style</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#x"/></svg></div><div class="t">Edit style</div><span style="font-weight:700;color:var(--blue)">Save</span></div>
+          <div class="body">
+            <div class="fld"><label>Style name <em>*</em></label><div class="inp">Gents Shalwar Kameez</div></div>
+            <div class="grid2">
+              <div class="fld"><label>Garment</label><div class="inp" style="font-size:14px;white-space:nowrap">Shalwar Kameez<svg class="i s" style="margin-left:auto"><use href="#down"/></svg></div></div>
+              <div class="fld"><label>Default for it</label><div class="inp" style="justify-content:space-between">Yes<div class="tgl on"></div></div></div>
+            </div>
+            <div class="between"><div class="h2">Fields <span class="cap">· drag to reorder</span></div><span class="cap">Required</span></div>
+            <div class="list">
+              <div class="li"><svg class="i s muted"><use href="#grip"/></svg><div class="grow"><div class="t">Chest</div><div class="s">inch · number</div></div><div class="tgl on"></div></div>
+              <div class="li"><svg class="i s muted"><use href="#grip"/></svg><div class="grow"><div class="t">Shoulder</div><div class="s">inch · number</div></div><div class="tgl on"></div></div>
+              <div class="li"><svg class="i s muted"><use href="#grip"/></svg><div class="grow"><div class="t">Sleeve</div><div class="s">inch · number</div></div><div class="tgl on"></div></div>
+              <div class="li"><svg class="i s muted"><use href="#grip"/></svg><div class="grow"><div class="t">Kameez length</div><div class="s">inch · number</div></div><div class="tgl on"></div></div>
+              <div class="li"><svg class="i s muted"><use href="#grip"/></svg><div class="grow"><div class="t">Collar</div><div class="s">inch · number</div></div><div class="tgl"></div></div>
+              <div class="li"><svg class="i s muted"><use href="#grip"/></svg><div class="grow"><div class="t">Collar type</div><div class="s">text</div></div><div class="tgl"></div></div>
+            </div>
+            <div class="btn sec sm" style="border-style:dashed"><svg class="i s"><use href="#plus"/></svg>Add field</div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>PUT /measurements/templates/{id}</code> with <code>fields[{measurementFieldId, isRequired, sortOrder}]</code>.<br><b>Fixes:</b> the old checklist could not mark a field required or change its order. Only fields in the style are listed, instead of all 18. "Add field" picks from the library or creates one (name, unit, number or text).</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">5.3 Staff <i>users.view</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="t">Staff</div><div class="iconbtn" style="background:var(--navy);color:#fff;border-color:var(--navy)"><svg class="i"><use href="#plus"/></svg></div></div>
+          <div class="body">
+            <div class="search"><svg class="i s"><use href="#search"/></svg>Name or phone</div>
+            <div class="chips"><div class="chip on">All <span class="n">9</span></div><div class="chip">Karigars <span class="n">5</span></div><div class="chip">Counter <span class="n">2</span></div><div class="chip">Managers</div></div>
+            <div class="list">
+              <div class="li"><div class="avatar">HU</div><div class="grow"><div class="t">Hammad Ustad</div><div class="s">Master tailor · <b style="color:var(--text)">Karigar</b></div></div><span class="badge dot st-rdy">In today</span></div>
+              <div class="li"><div class="avatar">BA</div><div class="grow"><div class="t">Bilal Ahmed</div><div class="s">Stitcher · <b style="color:var(--text)">Karigar</b></div></div><span class="badge dot st-rdy">In today</span></div>
+              <div class="li"><div class="avatar">IK</div><div class="grow"><div class="t">Imran Khan</div><div class="s">Cutter · <b style="color:var(--text)">Karigar</b></div></div><span class="badge dot st-del">Not in</span></div>
+              <div class="li"><div class="avatar">KS</div><div class="grow"><div class="t">Kashan</div><div class="s">Helper · <b style="color:var(--text)">Karigar</b></div></div><span class="badge dot st-rdy">In today</span></div>
+              <div class="li"><div class="avatar">SN</div><div class="grow"><div class="t">Sana Naveed</div><div class="s">Counter · <b style="color:var(--text)">Receptionist</b></div></div><span class="badge dot st-rdy">In today</span></div>
+              <div class="li" style="opacity:.55"><div class="avatar">ZA</div><div class="grow"><div class="t">Zeeshan Ali</div><div class="s">Deactivated</div></div></div>
+            </div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>GET /users</code> (roles, active, last login). "In today" from <code>/finance/attendance</code>.<br><b>Fix:</b> each person shows the <b>role</b> that controls access. "Master tailor", "Cutter", "Helper" are a label only and need backend change M6. Filters use roles, which the API knows.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">5.4 Add staff <i>users.manage · Owner</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#x"/></svg></div><div class="t">Add staff</div></div>
+          <div class="body" style="gap:11px">
+            <div class="grid2">
+              <div class="fld"><label>Name <em>*</em></label><div class="inp">Bilal Ahmed</div></div>
+              <div class="fld"><label>Label</label><div class="inp">Stitcher</div></div>
+            </div>
+            <div class="fld"><label>Mobile and PIN <em>*</em></label><div class="hstack"><div class="inp grow">0301 5566778</div><div class="inp" style="width:90px">••••</div></div></div>
+            <div class="fld"><label>Role · what they can do</label></div>
+            <div class="opt on" style="margin-top:-6px"><div class="radio on"></div><div class="grow"><b>Karigar</b><div class="cap">Sees only their own work. Starts and finishes stages. No prices.</div></div></div>
+            <div class="opt"><div class="radio"></div><div class="grow"><b>Receptionist</b><div class="cap">Customers, measurements, payments, deliveries.</div></div></div>
+            <div class="opt"><div class="radio"></div><div class="grow"><b>Manager</b><div class="cap">Everything except staff, billing and permissions.</div></div></div>
+            <div class="fld"><label>Branches</label><div class="chips"><div class="chip on"><svg class="i xs"><use href="#check"/></svg>Main</div><div class="chip">DHA</div></div></div>
+          </div>
+          <div class="foot"><div class="btn pri grow">Add Bilal</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>POST /users</code> with <code>phone</code>, <code>passcode</code>, <code>roleIds</code>, <code>shopIds</code>. Role list from <code>GET /roles</code>. Plain-language role descriptions come from the permission defaults.<br>Plan user limit errors show inline. Fine-tuning per role lives in More → Staff and roles → Permissions.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">5.5 Deliveries <i>orders.list</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="t">Deliveries</div></div>
+          <div class="body">
+            <div class="chips"><div class="chip red">Late <span class="n">3</span></div><div class="chip on">Today <span class="n">5</span></div><div class="chip">Tomorrow <span class="n">4</span></div><div class="chip">Ready <span class="n">7</span></div></div>
+            <div class="ocard"><div class="between"><div class="nm">Sana Tariq</div><span class="badge dot st-rdy">Ready</span></div><div class="cap">Ladies Shalwar Kameez ×3 · Paid</div><div class="hstack"><div class="btn wa sm grow"><svg class="i s"><use href="#msg"/></svg>Remind</div><div class="btn pri sm grow"><svg class="i s"><use href="#truck"/></svg>Deliver</div></div></div>
+            <div class="ocard"><div class="between"><div class="nm">Mehran Abbas</div><span class="badge dot st-rdy">Ready</span></div><div class="cap">Shalwar Kameez ×2 · <b style="color:var(--red)">Rs 1,500 due</b></div><div class="hstack"><div class="btn wa sm grow"><svg class="i s"><use href="#msg"/></svg>Remind</div><div class="btn pri sm grow"><svg class="i s"><use href="#wallet"/></svg>Collect &amp; deliver</div></div></div>
+            <div class="ocard lateb"><div class="between"><div class="nm">Saad Khan</div><span class="badge dot st-sti">Stitching</span></div><div class="cap">Kurta · <b>not ready</b> · Bilal has it</div><div class="hstack"><div class="btn sec sm grow"><svg class="i s"><use href="#phone"/></svg>Call customer</div><div class="btn sec sm grow">Move date</div></div></div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> one call, <code>GET /orders/board</code>, returns all buckets with counts. "Remind" uses <code>POST /notifications/orders/{id}</code>. "Move date" edits <code>deliveryDate</code> with <code>PUT /orders</code>.<br>Built for the counter: the action matches the situation.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ KARIGAR ============ -->
+  <section class="grp">
+    <div class="grp-title"><h2>6 · Karigar app</h2><span>Same app, different home. Big text, big buttons, no money except their own earnings.</span></div>
+    <div class="row">
+
+      <div class="frame">
+        <div class="frame-name">6.1 My work <i>production.work</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="grow"><div class="sub">Assalam o Alaikum</div><div style="font-size:20px;font-weight:800">Bilal</div></div><div class="badge dot st-rdy" style="font-size:12px;padding:6px 10px">In since 9:12</div></div>
+          <div class="body">
+            <div class="grid3">
+              <div class="kpi dk" style="padding:10px"><div class="l">To do</div><div class="v">6</div></div>
+              <div class="kpi" style="padding:10px"><div class="l">Working</div><div class="v" style="color:var(--amber)">1</div></div>
+              <div class="kpi" style="padding:10px"><div class="l">Redo</div><div class="v" style="color:var(--red)">1</div></div>
+            </div>
+            <div class="ocard" style="box-shadow:inset 3px 0 0 var(--amber)">
+              <div class="between"><span class="badge dot st-sti">Stitching · working</span><span class="cap">since 10:05</span></div>
+              <div class="nm" style="font-size:16px">Shalwar Kameez ×2</div>
+              <div class="cap">ORD-261109-A41C2E · Ahmed · due 19 Nov</div>
+              <div class="btn pri sm"><svg class="i s"><use href="#check"/></svg>Mark stitching done</div>
+            </div>
+            <div class="ocard" style="box-shadow:inset 3px 0 0 var(--red)">
+              <div class="between"><span class="badge st-can">Redo</span><span class="badge late">Late</span></div>
+              <div class="nm" style="font-size:16px">Kurta</div>
+              <div class="cap">"Collar stitching loose" — QC, Ali</div>
+              <div class="btn sec sm"><svg class="i s"><use href="#play"/></svg>Start again</div>
+            </div>
+            <div class="ocard">
+              <div class="between"><span class="badge dot st-sti">Stitching</span><span class="badge rush">Rush</span></div>
+              <div class="nm" style="font-size:16px">Sherwani</div>
+              <div class="cap">ORD-261102-07B536 · due 14 Nov</div>
+            </div>
+          </div>
+          <div class="nav">
+            <div class="on"><svg class="i"><use href="#scissors"/></svg>My work</div>
+            <div><svg class="i"><use href="#check"/></svg>Done</div>
+            <div><svg class="i"><use href="#wallet"/></svg>Earnings</div>
+            <div><svg class="i"><use href="#user"/></svg>Me</div>
+            <div class="home-ind"></div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>GET /karigar/my-queue</code> (in progress, to do, rework, alterations). Check-in with <code>POST /attendance/check-in</code>.<br>Start: <code>POST /orders/stages/log</code>. Done: <code>POST /orders/stages/complete</code>. The server only allows the karigar's own items.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">6.2 Job card</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="iconbtn ghost"><svg class="i"><use href="#left"/></svg></div><div class="grow"><div class="t">Shalwar Kameez ×2</div><div class="sub">Stitching · due Wed 19 Nov</div></div></div>
+          <div class="body">
+            <div class="mgrid">
+              <div class="mv"><div class="k">Chest</div><div class="v" style="font-size:20px">40<small>in</small></div></div>
+              <div class="mv"><div class="k">Shoulder</div><div class="v" style="font-size:20px">18<small>in</small></div></div>
+              <div class="mv"><div class="k">Sleeve</div><div class="v" style="font-size:20px">24.5<small>in</small></div></div>
+              <div class="mv"><div class="k">Kameez length</div><div class="v" style="font-size:20px">42<small>in</small></div></div>
+              <div class="mv"><div class="k">Waist</div><div class="v" style="font-size:20px">36<small>in</small></div></div>
+              <div class="mv"><div class="k">Collar</div><div class="v" style="font-size:20px">15.5<small>in</small></div></div>
+            </div>
+            <div class="chips" style="flex-wrap:wrap"><div class="chip">Band collar</div><div class="chip">Round cuff</div><div class="chip">Side pockets</div><div class="chip">Navy blue</div></div>
+            <div class="card tight" style="background:var(--gold-soft);border-color:#F1DE9E"><div class="cap" style="color:#7A5B00;font-weight:700">NOTE FROM SHOP</div><div style="font-size:14px;margin-top:2px">Slim fit. Extra buttons in a packet.</div></div>
+            <div class="hstack"><div style="width:72px;height:72px;border-radius:12px;background:linear-gradient(135deg,#1f3b63,#2c5282)"></div><div class="cap">Fabric photo</div></div>
+          </div>
+          <div class="foot"><div class="btn pri grow" style="height:56px;font-size:16px"><svg class="i"><use href="#check"/></svg>Stitching done</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>API:</b> measurements, options and notes come in the queue item and order snapshot. Customer shown by first name only. <b>No prices</b> on this screen (decision D7; the backend still returns them, see M13).<br>Large values so they can be read from a work table.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">6.3 Earnings</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span><span class="r"><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="bat"></span></span></div>
+          <div class="top"><div class="h1 grow">Earnings</div></div>
+          <div class="body">
+            <div class="kpi dk" style="padding:16px"><div class="l">Shop owes you</div><div class="v" style="font-size:30px">Rs 7,450</div><div class="cap" style="color:#B6C2D2">After Rs 2,000 advance on 3 Nov</div></div>
+            <div class="seg"><div class="on">This week</div><div>This month</div></div>
+            <div class="grid2">
+              <div class="kpi"><div class="l">Pieces done</div><div class="v">14</div></div>
+              <div class="kpi"><div class="l">Earned</div><div class="v">Rs 9,450</div></div>
+            </div>
+            <div class="list">
+              <div class="li"><div class="grow"><div class="t">Shalwar Kameez · stitching</div><div class="s">ORD-261101 · 8 Nov</div></div><span class="money" style="color:var(--green)">+1,200</span></div>
+              <div class="li"><div class="grow"><div class="t">Kurta · stitching</div><div class="s">ORD-261028 · 7 Nov</div></div><span class="money" style="color:var(--green)">+800</span></div>
+              <div class="li"><div class="grow"><div class="t">Redo deduction</div><div class="s">Loose collar · 6 Nov</div></div><span class="money" style="color:var(--red)">−200</span></div>
+              <div class="li"><div class="grow"><div class="t">Advance</div><div class="s">Cash · 3 Nov</div></div><span class="money" style="color:var(--red)">−2,000</span></div>
+            </div>
+          </div>
+          <div class="nav">
+            <div><svg class="i"><use href="#scissors"/></svg>My work</div>
+            <div><svg class="i"><use href="#check"/></svg>Done</div>
+            <div class="on"><svg class="i"><use href="#wallet"/></svg>Earnings</div>
+            <div><svg class="i"><use href="#user"/></svg>Me</div>
+            <div class="home-ind"></div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>GET /karigar/my-ledger?from=&amp;to=</code> gives closing balance, earnings, advances, deductions and each entry with a running balance. Piece rates are set by the owner in Karigar pay.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATES ============ -->
+  <section class="grp">
+    <div class="grp-title"><h2>7 · Empty, loading and blocked states</h2><span>Every list has all three</span></div>
+    <div class="row">
+
+      <div class="frame">
+        <div class="frame-name">7.1 Loading</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span></div>
+          <div class="top"><div class="h1 grow">Orders</div></div>
+          <div class="body">
+            <div class="skel" style="height:44px;border-radius:14px"></div>
+            <div class="hstack"><div class="skel" style="height:32px;width:80px;border-radius:99px"></div><div class="skel" style="height:32px;width:70px;border-radius:99px"></div><div class="skel" style="height:32px;width:70px;border-radius:99px"></div></div>
+            <div class="card stack"><div class="skel" style="height:16px;width:60%"></div><div class="skel" style="height:12px;width:40%"></div><div class="skel" style="height:12px;width:80%"></div></div>
+            <div class="card stack"><div class="skel" style="height:16px;width:55%"></div><div class="skel" style="height:12px;width:45%"></div><div class="skel" style="height:12px;width:70%"></div></div>
+            <div class="card stack"><div class="skel" style="height:16px;width:65%"></div><div class="skel" style="height:12px;width:35%"></div><div class="skel" style="height:12px;width:75%"></div></div>
+          </div>
+        </div></div>
+        <div class="note">Skeletons keep the layout still while data loads. Pull down to refresh on every list.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">7.2 Empty</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span></div>
+          <div class="top"><div class="h1 grow">Orders</div></div>
+          <div class="body" style="align-items:center;justify-content:center;text-align:center;gap:10px;padding-bottom:80px">
+            <div style="width:88px;height:88px;border-radius:28px;background:var(--gold-soft);display:flex;align-items:center;justify-content:center;color:#7A5B00"><svg class="i" style="width:40px;height:40px"><use href="#bag"/></svg></div>
+            <div class="h2" style="font-size:18px">No orders yet</div>
+            <div class="cap" style="max-width:240px;font-size:14px">Take your first order. It takes about a minute if the customer's measurements are saved.</div>
+            <div class="btn gold" style="margin-top:6px"><svg class="i"><use href="#plus"/></svg>New order</div>
+          </div>
+        </div></div>
+        <div class="note">Each empty state says what the list is for and offers the one action that fills it.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">7.3 Subscription ended <i>HTTP 402</i></div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span></div>
+          <div class="body" style="align-items:center;text-align:center;padding-top:80px;gap:12px">
+            <div style="width:88px;height:88px;border-radius:28px;background:var(--red-soft);display:flex;align-items:center;justify-content:center;color:var(--red)"><svg class="i" style="width:40px;height:40px"><use href="#lock"/></svg></div>
+            <div class="h1" style="font-size:22px">Your subscription has ended</div>
+            <div class="cap" style="font-size:14px;max-width:270px">Your data is safe. Renew to keep taking orders. Staff cannot use the app until then.</div>
+            <div class="card stack" style="width:100%;text-align:left;gap:8px">
+              <div class="between cap"><span>Plan</span><b style="color:var(--text)">Growth · Rs 3,500/month</b></div>
+              <div class="between cap"><span>Ended</span><b style="color:var(--text)">1 Nov 2026</b></div>
+              <div class="between cap"><span>Unpaid invoice</span><b style="color:var(--red)">INV-2026-114</b></div>
+            </div>
+          </div>
+          <div class="foot" style="flex-direction:column"><div class="btn wa"><svg class="i"><use href="#msg"/></svg>Contact Digital Darzi</div><div class="btn sec">View invoices</div><div class="home-ind"></div></div>
+        </div></div>
+        <div class="note"><b>API:</b> any 402 opens this screen. Details from <code>GET /billing/subscription</code> and <code>/billing/invoices</code>, which still work while blocked. Staff see a shorter version without billing.</div>
+      </div>
+
+      <div class="frame">
+        <div class="frame-name">7.4 Trial ending banner</div>
+        <div class="phone"><div class="scr">
+          <div class="sb"><span>9:41</span></div>
+          <div class="top"><div class="grow"><div class="sub">Softronix Tailors</div><div style="font-weight:700;font-size:17px">Main Branch</div></div></div>
+          <div class="body">
+            <div class="alert amber"><svg class="i"><use href="#clock"/></svg><div class="grow"><b>Trial ends in 3 days.</b> Pick a plan to keep going.</div><svg class="i s"><use href="#right"/></svg></div>
+            <div class="grid2"><div class="kpi dk" style="height:92px"></div><div class="kpi" style="height:92px"></div><div class="kpi" style="height:92px"></div><div class="kpi" style="height:92px"></div></div>
+            <div class="card" style="height:140px"></div>
+          </div>
+        </div></div>
+        <div class="note"><b>API:</b> <code>/auth/me</code> → <code>subscription.trialEndsAt</code> or <code>subscriptionEndsAt</code>. Shown to the Owner from 7 days before the end. Never shown to staff.</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

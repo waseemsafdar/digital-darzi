@@ -1,3 +1,4 @@
+using Infrastructure.Services;
 using System.Globalization;
 using System.Text;
 using API.Authorization;
@@ -55,6 +56,7 @@ public class ReportsController : BaseController
     }
 
     [HttpGet("revenue")]
+    [RequiresPlanFeature(PlanFeature.Reports)]
     public async Task<IActionResult> GetRevenue([FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? scope, CancellationToken ct)
     {
         var (tenantWide, denied) = await ScopeAsync(scope);
@@ -64,6 +66,7 @@ public class ReportsController : BaseController
     }
 
     [HttpGet("daily-revenue")]
+    [RequiresPlanFeature(PlanFeature.Reports)]
     public async Task<IActionResult> GetDailyRevenue([FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? scope, CancellationToken ct)
     {
         var (tenantWide, denied) = await ScopeAsync(scope);
@@ -73,6 +76,7 @@ public class ReportsController : BaseController
     }
 
     [HttpGet("top-customers")]
+    [RequiresPlanFeature(PlanFeature.Reports)]
     public async Task<IActionResult> GetTopCustomers([FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] int limit = 10, [FromQuery] string? scope = null, CancellationToken ct = default)
     {
         var (tenantWide, denied) = await ScopeAsync(scope);
@@ -82,6 +86,7 @@ public class ReportsController : BaseController
     }
 
     [HttpGet("staff-performance")]
+    [RequiresPlanFeature(PlanFeature.Reports)]
     public async Task<IActionResult> GetStaffPerformance([FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? scope, CancellationToken ct)
     {
         var (tenantWide, denied) = await ScopeAsync(scope);
@@ -99,6 +104,7 @@ public class ReportsController : BaseController
     }
 
     [HttpGet("pending-balances")]
+    [RequiresPlanFeature(PlanFeature.Reports)]
     public async Task<IActionResult> GetPendingBalances([FromQuery] int limit = 200, [FromQuery] string? scope = null, CancellationToken ct = default)
     {
         var (tenantWide, denied) = await ScopeAsync(scope);
@@ -108,6 +114,7 @@ public class ReportsController : BaseController
 
     /// <summary>Side-by-side figures for every branch (Owner).</summary>
     [HttpGet("branches")]
+    [RequiresPlanFeature(PlanFeature.Reports)]
     [HasPermission(Permissions.ReportsTenantWide)]
     public async Task<IActionResult> GetBranches([FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct)
     {
@@ -120,6 +127,7 @@ public class ReportsController : BaseController
     /// staff-performance, expenses, branches.
     /// </summary>
     [HttpGet("export/{report}")]
+    [RequiresPlanFeature(PlanFeature.Reports)]
     public async Task<IActionResult> Export(string report, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? scope, CancellationToken ct)
     {
         var (tenantWide, denied) = await ScopeAsync(scope);
